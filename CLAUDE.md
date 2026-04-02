@@ -41,7 +41,7 @@ Eigenaar: Ronny Hullegie
 - **MQTT** broker op Zolder (192.168.1.178:1883)
 
 ## Netwerk
-- **Pi Bats:** IP volgt
+- **Pi Bats (emsn-bats):** 192.168.1.88
 - **NAS (DS224Plus):** 192.168.1.25
 - **MQTT Broker (Zolder):** 192.168.1.178:1883
 - **Grafana:** http://192.168.1.25:3000

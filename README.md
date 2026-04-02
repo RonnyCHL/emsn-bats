@@ -50,7 +50,7 @@ docs/
 
 ## Netwerk
 
-- **Pi Bats:** IP volgt
+- **Pi Bats (emsn-bats):** 192.168.1.88
 - **NAS:** 192.168.1.25
 - **MQTT Broker:** 192.168.1.178 (Pi Zolder)
 - **Grafana:** http://192.168.1.25:3000
