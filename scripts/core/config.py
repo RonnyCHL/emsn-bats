@@ -6,6 +6,7 @@ from scripts.core.database import get_setting, set_setting
 DEFAULTS = {
     # Opname
     "recording.enabled": "true",
+    "recording.night_only": "true",
     "recording.sample_rate": "200000",
     "recording.duration_seconds": "5",
     "recording.device_name": "UltraMic",

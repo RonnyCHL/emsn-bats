@@ -226,6 +226,45 @@ def api_species():
     return jsonify(get_today_species())
 
 
+@app.route("/api/audible/<int:detection_id>")
+def api_audible(detection_id):
+    """Genereer hoorbare versie van ultrasone detectie audio."""
+    conn = get_connection()
+    row = conn.execute(
+        "SELECT audio_path FROM detections WHERE id = ?", (detection_id,)
+    ).fetchone()
+
+    if not row or not row["audio_path"]:
+        return jsonify({"error": "Geen audio gevonden"}), 404
+
+    from scripts.detection.time_stretch import time_stretch
+
+    audio_path = row["audio_path"]
+    audible_path = audio_path.replace(".wav", "_audible.wav")
+
+    if not Path(audible_path).exists():
+        result = time_stretch(audio_path, audible_path)
+        if result is None:
+            return jsonify({"error": "Time-stretch mislukt"}), 500
+
+    return send_from_directory(
+        str(Path(audible_path).parent), Path(audible_path).name
+    )
+
+
+@app.route("/api/sun")
+def api_sun():
+    """Zonsopgang/ondergang tijden."""
+    from scripts.core.sun import get_sun_times, is_night
+
+    sunrise, sunset = get_sun_times()
+    return jsonify({
+        "sunrise": sunrise.strftime("%H:%M"),
+        "sunset": sunset.strftime("%H:%M"),
+        "is_night": is_night(),
+    })
+
+
 @app.route("/recordings/<path:filepath>")
 def serve_recording(filepath):
     """Serveer audio bestanden."""

@@ -1,0 +1,14 @@
+[Unit]
+Description=EMSN Bats Cleanup - Verwijder oude audio en spectrogrammen
+
+[Service]
+Type=oneshot
+User=ronny
+WorkingDirectory=/home/ronny/emsn-bats
+ExecStart=/home/ronny/emsn-bats/venv/bin/python3 -m scripts.archive.cleanup
+
+Environment=PYTHONUNBUFFERED=1
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=bat-cleanup

@@ -39,11 +39,12 @@
 
 {% if detection.audio_path %}
 <div style="text-align: center; margin-top: 15px;">
+    <h3 style="color: var(--accent-light); margin-bottom: 10px;">Hoorbare versie (10x vertraagd)</h3>
     <audio controls style="width: 80%;">
-        <source src="/recordings/{{ detection.audio_path.split('/recordings/')[-1] }}" type="audio/wav">
+        <source src="/api/audible/{{ detection.id }}" type="audio/wav">
     </audio>
     <div class="frequency-info" style="margin-top: 5px;">
-        Let op: ultrasoon audio (200kHz) - niet hoorbaar zonder conversie
+        Ultrasone echolocatie omgezet naar hoorbaar bereik (50 kHz -> 5 kHz)
     </div>
 </div>
 {% endif %}

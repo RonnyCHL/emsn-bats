@@ -23,6 +23,17 @@
         </div>
         <div class="setting-row">
             <div>
+                <label>Alleen 's nachts opnemen</label>
+                <div class="setting-desc">Alleen actief tussen zonsondergang en zonsopgang</div>
+            </div>
+            <label class="toggle">
+                <input type="checkbox" name="recording.night_only"
+                       {% if config.get('recording.night_only', 'true') == 'true' %}checked{% endif %}>
+                <span class="slider"></span>
+            </label>
+        </div>
+        <div class="setting-row">
+            <div>
                 <label>Sample rate (Hz)</label>
                 <div class="setting-desc">Ultramic 200K standaard: 200000</div>
             </div>

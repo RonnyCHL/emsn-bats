@@ -1,0 +1,9 @@
+[Unit]
+Description=EMSN Bats PostgreSQL Sync Timer - Elk uur op :15
+
+[Timer]
+OnCalendar=*-*-* *:15:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

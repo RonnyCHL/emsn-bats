@@ -37,6 +37,7 @@ class BatMonitor:
 
         return {
             "enabled": get_config_bool("recording.enabled"),
+            "night_only": get_config_bool("recording.night_only"),
             "sample_rate": get_config_int("recording.sample_rate"),
             "duration": get_config_int("recording.duration_seconds"),
             "device_name": get_config("recording.device_name"),
@@ -183,6 +184,14 @@ class BatMonitor:
                 high_freq,
             )
 
+            # Publiceer naar MQTT
+            try:
+                from scripts.detection.mqtt_publisher import publish_detection
+
+                publish_detection(detection_record)
+            except Exception:
+                logger.debug("MQTT publish overgeslagen")
+
     def run(self):
         """Start de monitoring loop."""
         from scripts.core.database import init_db
@@ -227,6 +236,15 @@ class BatMonitor:
                     logger.debug("Opname uitgeschakeld, wacht 10s...")
                     time.sleep(10)
                     continue
+
+                # Nacht-modus: alleen opnemen als het donker is
+                if config["night_only"]:
+                    from scripts.core.sun import is_night
+
+                    if not is_night():
+                        logger.debug("Dagmodus - wacht op zonsondergang...")
+                        time.sleep(60)
+                        continue
 
                 # Opname
                 audio = self._record_block(
