@@ -5,12 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}EMSN Bats{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>&#x1F987;</text></svg>">
     {% block head %}{% endblock %}
 </head>
 <body>
     <header class="header">
         <h1><span class="bat-icon">&#x1F987;</span> EMSN Bats</h1>
-        <div class="station-name">emsn-bats</div>
+        <div class="station-name">emsn-bats &mdash; Vleermuismonitoring Nijverdal</div>
     </header>
 
     <nav>
@@ -27,8 +28,8 @@
     </div>
 
     <footer class="footer">
-        EMSN Bats - Vleermuismonitoring Nijverdal | BatDetect2 + Dodotronic Ultramic 200kHz<br>
-        Laatste update: {{ now.strftime('%Y-%m-%d %H:%M:%S') }}
+        EMSN Bats &mdash; BatDetect2 + Dodotronic Ultramic 200kHz<br>
+        {{ now.strftime('%Y-%m-%d %H:%M:%S') }}
     </footer>
 
     <div id="toast" class="toast"></div>
@@ -38,10 +39,11 @@
             const toast = document.getElementById('toast');
             toast.textContent = message;
             toast.style.display = 'block';
-            setTimeout(() => { toast.style.display = 'none'; }, duration);
+            setTimeout(() => {
+                toast.style.display = 'none';
+            }, duration);
         }
 
-        // Auto-refresh elke 30 seconden op overzicht en detecties
         {% if request.path in ['/', '/detections', '/spectrogram'] %}
         setTimeout(() => { location.reload(); }, 30000);
         {% endif %}
