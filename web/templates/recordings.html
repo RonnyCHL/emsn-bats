@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}EMSN Bats - Opnames{% endblock %}
+
+{% block content %}
+<div class="section-header">
+    Opnames
+</div>
+
+<div style="display: flex; gap: 20px;">
+    <!-- Datum selectie -->
+    <div style="min-width: 200px;">
+        <h3 style="color: var(--accent-light); margin-bottom: 10px;">Datums</h3>
+        {% for date in dates %}
+        <a href="?date={{ date }}" class="detection-card"
+           style="text-decoration: none; display: block;
+                  {% if date == selected_date %}border-color: var(--accent);{% endif %}">
+            {{ date }}
+        </a>
+        {% endfor %}
+        {% if not dates %}
+        <div style="color: var(--text-secondary);">Nog geen opnames</div>
+        {% endif %}
+    </div>
+
+    <!-- Bestanden -->
+    <div style="flex: 1;">
+        {% if selected_date %}
+        <h3 style="color: var(--accent-light); margin-bottom: 10px;">
+            {{ selected_date }} - {{ files|length }} bestanden
+        </h3>
+        {% for file in files %}
+        <div class="recording-item">
+            <span style="margin-right: 15px;">{{ file[4:19].replace('_', ' ') }}</span>
+            <a href="/recordings/{{ selected_date }}/{{ file }}">{{ file }}</a>
+        </div>
+        {% endfor %}
+        {% if not files %}
+        <div style="color: var(--text-secondary);">Geen opnames op deze datum</div>
+        {% endif %}
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

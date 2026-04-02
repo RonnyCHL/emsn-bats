@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}EMSN Bats - Soorten{% endblock %}
+
+{% block content %}
+<div class="section-header">
+    Soorten Statistieken - {{ species_list|length }} soorten gedetecteerd
+</div>
+
+<table class="species-table">
+    <thead>
+        <tr>
+            <th>Soort</th>
+            <th>Wetenschappelijk</th>
+            <th>Detecties</th>
+            <th>Max Conf.</th>
+            <th>Actieve dagen</th>
+            <th>Eerste</th>
+            <th>Laatste</th>
+            <th>Zeldzaamheid</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for sp in species_list %}
+        <tr>
+            <td><strong>{{ sp.species_dutch or sp.species|dutch_name }}</strong></td>
+            <td style="font-style: italic; color: var(--accent-light);">{{ sp.species }}</td>
+            <td>{{ sp.total }}</td>
+            <td>
+                <span class="confidence-badge
+                    {% if sp.max_confidence >= 0.7 %}confidence-high
+                    {% elif sp.max_confidence >= 0.4 %}confidence-medium
+                    {% else %}confidence-low{% endif %}">
+                    {{ (sp.max_confidence * 100)|int }}%
+                </span>
+            </td>
+            <td>{{ sp.active_days }}</td>
+            <td>{{ sp.first_seen[:10] }}</td>
+            <td>{{ sp.last_seen|timeago }}</td>
+            <td>
+                <span class="rarity-badge rarity-{{ sp.rarity }}">
+                    {% if sp.rarity == 1 %}Algemeen
+                    {% elif sp.rarity == 2 %}Vrij algemeen
+                    {% elif sp.rarity == 3 %}Ongewoon
+                    {% elif sp.rarity == 4 %}Zeldzaam
+                    {% elif sp.rarity == 5 %}Zeer zeldzaam
+                    {% endif %}
+                </span>
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+{% if not species_list %}
+<div style="text-align: center; padding: 40px; color: var(--text-secondary);">
+    Nog geen soorten gedetecteerd. De eerste detectie komt eraan!
+</div>
+{% endif %}
+{% endblock %}

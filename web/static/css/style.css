@@ -1,0 +1,486 @@
+/* EMSN Bats - Dark theme zoals BirdNET-Pi */
+
+:root {
+    --bg-primary: #1a1a2e;
+    --bg-secondary: #16213e;
+    --bg-card: #0f3460;
+    --bg-nav: #0a0a1a;
+    --text-primary: #e0e0e0;
+    --text-secondary: #a0a0a0;
+    --accent: #7b2ff7;
+    --accent-light: #9d4edd;
+    --success: #4caf50;
+    --warning: #ff9800;
+    --danger: #f44336;
+    --bat-purple: #7b2ff7;
+    --bat-dark: #2d1b69;
+    --link: #bb86fc;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    min-height: 100vh;
+}
+
+/* Header */
+.header {
+    background: linear-gradient(135deg, var(--bg-nav) 0%, var(--bat-dark) 100%);
+    padding: 15px 0;
+    text-align: center;
+    border-bottom: 2px solid var(--accent);
+}
+
+.header h1 {
+    font-size: 2em;
+    color: var(--accent-light);
+    margin-bottom: 5px;
+}
+
+.header h1 .bat-icon {
+    font-size: 1.2em;
+}
+
+.header .station-name {
+    color: var(--text-secondary);
+    font-size: 0.9em;
+}
+
+/* Navigation */
+nav {
+    background: var(--bg-secondary);
+    padding: 10px 0;
+    text-align: center;
+    border-bottom: 1px solid #333;
+}
+
+nav a {
+    color: var(--text-primary);
+    text-decoration: none;
+    padding: 8px 16px;
+    margin: 0 4px;
+    border-radius: 5px;
+    transition: background 0.3s;
+    display: inline-block;
+}
+
+nav a:hover, nav a.active {
+    background: var(--accent);
+    color: white;
+}
+
+/* Main content */
+.container {
+    max-width: 1200px;
+    margin: 20px auto;
+    padding: 0 20px;
+}
+
+/* Stat cards */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.stat-card {
+    background: var(--bg-card);
+    border-radius: 10px;
+    padding: 20px;
+    text-align: center;
+    border: 1px solid rgba(123, 47, 247, 0.3);
+}
+
+.stat-card .value {
+    font-size: 2.5em;
+    font-weight: bold;
+    color: var(--accent-light);
+}
+
+.stat-card .label {
+    color: var(--text-secondary);
+    font-size: 0.85em;
+    margin-top: 5px;
+}
+
+/* Section headers */
+.section-header {
+    text-align: center;
+    padding: 15px;
+    margin: 20px 0 10px;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    border-left: 4px solid var(--accent);
+}
+
+.section-header.new {
+    border-left-color: var(--success);
+    color: var(--success);
+}
+
+.section-header.rare {
+    border-left-color: var(--warning);
+    color: var(--warning);
+}
+
+/* Detection cards */
+.detection-card {
+    display: flex;
+    align-items: center;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    padding: 12px 15px;
+    margin-bottom: 8px;
+    border: 1px solid #333;
+    transition: border-color 0.3s;
+}
+
+.detection-card:hover {
+    border-color: var(--accent);
+}
+
+.detection-time {
+    color: var(--text-secondary);
+    font-size: 0.9em;
+    min-width: 70px;
+}
+
+.detection-info {
+    flex: 1;
+    margin-left: 15px;
+}
+
+.detection-info .species-name {
+    font-weight: bold;
+    font-size: 1.1em;
+}
+
+.detection-info .species-latin {
+    color: var(--accent-light);
+    font-style: italic;
+    font-size: 0.9em;
+}
+
+.detection-confidence {
+    text-align: right;
+    min-width: 120px;
+}
+
+.confidence-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 15px;
+    font-weight: bold;
+    font-size: 0.9em;
+}
+
+.confidence-high { background: var(--success); color: white; }
+.confidence-medium { background: var(--warning); color: black; }
+.confidence-low { background: var(--danger); color: white; }
+
+.frequency-info {
+    color: var(--text-secondary);
+    font-size: 0.8em;
+}
+
+/* Species table */
+.species-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+.species-table th {
+    background: var(--bg-card);
+    padding: 12px;
+    text-align: left;
+    border-bottom: 2px solid var(--accent);
+}
+
+.species-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid #333;
+}
+
+.species-table tr:hover {
+    background: rgba(123, 47, 247, 0.1);
+}
+
+.rarity-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.8em;
+    font-weight: bold;
+}
+
+.rarity-1 { background: var(--success); color: white; }
+.rarity-2 { background: #8bc34a; color: black; }
+.rarity-3 { background: var(--warning); color: black; }
+.rarity-4 { background: #ff5722; color: white; }
+.rarity-5 { background: var(--danger); color: white; }
+
+/* Hourly chart */
+.hourly-chart {
+    display: flex;
+    align-items: flex-end;
+    height: 150px;
+    gap: 2px;
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.hourly-bar {
+    flex: 1;
+    background: var(--accent);
+    border-radius: 3px 3px 0 0;
+    min-height: 2px;
+    position: relative;
+    transition: background 0.3s;
+}
+
+.hourly-bar:hover {
+    background: var(--accent-light);
+}
+
+.hourly-bar .bar-label {
+    position: absolute;
+    bottom: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.7em;
+    color: var(--text-secondary);
+}
+
+.hourly-bar .bar-count {
+    position: absolute;
+    top: -18px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.7em;
+    color: var(--text-primary);
+}
+
+/* Spectrogram */
+.spectrogram-container {
+    text-align: center;
+    margin: 20px 0;
+}
+
+.spectrogram-container img {
+    max-width: 100%;
+    border-radius: 8px;
+    border: 1px solid #333;
+}
+
+/* Settings form */
+.settings-section {
+    background: var(--bg-secondary);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 15px;
+}
+
+.settings-section h3 {
+    color: var(--accent-light);
+    margin-bottom: 15px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #333;
+}
+
+.setting-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+}
+
+.setting-row label {
+    flex: 1;
+    color: var(--text-primary);
+}
+
+.setting-row .setting-desc {
+    color: var(--text-secondary);
+    font-size: 0.8em;
+}
+
+.setting-row input, .setting-row select {
+    background: var(--bg-primary);
+    border: 1px solid #444;
+    color: var(--text-primary);
+    padding: 8px 12px;
+    border-radius: 5px;
+    width: 200px;
+}
+
+.setting-row input:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.btn {
+    display: inline-block;
+    padding: 10px 24px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: background 0.3s;
+}
+
+.btn:hover {
+    background: var(--accent-light);
+}
+
+.btn-danger {
+    background: var(--danger);
+}
+
+.btn-success {
+    background: var(--success);
+}
+
+/* Toggle switch */
+.toggle {
+    position: relative;
+    width: 50px;
+    height: 26px;
+}
+
+.toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.toggle .slider {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: #555;
+    border-radius: 13px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.toggle .slider:before {
+    content: "";
+    position: absolute;
+    height: 20px;
+    width: 20px;
+    left: 3px;
+    bottom: 3px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 0.3s;
+}
+
+.toggle input:checked + .slider {
+    background: var(--accent);
+}
+
+.toggle input:checked + .slider:before {
+    transform: translateX(24px);
+}
+
+/* Toast notifications */
+.toast {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    padding: 15px 25px;
+    background: var(--success);
+    color: white;
+    border-radius: 8px;
+    display: none;
+    z-index: 1000;
+    animation: fadeIn 0.3s;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Status indicator */
+.status-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    margin-right: 5px;
+}
+
+.status-dot.active { background: var(--success); }
+.status-dot.inactive { background: var(--danger); }
+
+/* Recordings list */
+.recording-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    background: var(--bg-secondary);
+    border-radius: 5px;
+    margin-bottom: 5px;
+}
+
+.recording-item a {
+    color: var(--link);
+    text-decoration: none;
+}
+
+.recording-item a:hover {
+    text-decoration: underline;
+}
+
+/* Footer */
+.footer {
+    text-align: center;
+    padding: 20px;
+    color: var(--text-secondary);
+    font-size: 0.85em;
+    border-top: 1px solid #333;
+    margin-top: 40px;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    nav a {
+        padding: 6px 10px;
+        font-size: 0.85em;
+    }
+
+    .detection-card {
+        flex-wrap: wrap;
+    }
+
+    .setting-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 5px;
+    }
+
+    .setting-row input {
+        width: 100%;
+    }
+}

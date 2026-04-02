@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}EMSN Bats - Detecties{% endblock %}
+
+{% block content %}
+<div class="section-header">
+    Detecties vandaag - {{ total }} totaal
+</div>
+
+{% for det in detections %}
+<div class="detection-card">
+    <div class="detection-time">{{ det.detection_time[11:19] }}</div>
+    <div class="detection-info">
+        <div class="species-name">{{ det.species_dutch or det.species|dutch_name }}</div>
+        <div class="species-latin">{{ det.species }}</div>
+    </div>
+    <div class="detection-confidence">
+        <span class="confidence-badge
+            {% if det.confidence >= 0.7 %}confidence-high
+            {% elif det.confidence >= 0.4 %}confidence-medium
+            {% else %}confidence-low{% endif %}">
+            {{ (det.confidence * 100)|int }}%
+        </span>
+        <div class="frequency-info">
+            {{ (det.frequency_low / 1000)|round(1) }}-{{ (det.frequency_high / 1000)|round(1) }} kHz
+            | {{ det.duration_ms|round(1) }}ms
+        </div>
+    </div>
+    {% if det.spectrogram_path %}
+    <div style="margin-left: 10px;">
+        <a href="/spectrograms/{{ det.spectrogram_path.split('/spectrograms/')[-1] }}"
+           target="_blank" title="Bekijk spectrogram">&#x1F4CA;</a>
+    </div>
+    {% endif %}
+</div>
+{% endfor %}
+
+{% if not detections %}
+<div class="section-header">
+    Nog geen detecties vandaag.
+</div>
+{% endif %}
+
+<!-- Paginering -->
+{% if total > per_page %}
+<div style="text-align: center; margin-top: 20px;">
+    {% if page > 1 %}
+    <a href="?page={{ page - 1 }}" class="btn">&laquo; Vorige</a>
+    {% endif %}
+    <span style="margin: 0 15px; color: var(--text-secondary);">
+        Pagina {{ page }} van {{ (total / per_page)|round(0, 'ceil')|int }}
+    </span>
+    {% if page * per_page < total %}
+    <a href="?page={{ page + 1 }}" class="btn">Volgende &raquo;</a>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

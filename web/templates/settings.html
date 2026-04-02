@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% block title %}EMSN Bats - Instellingen{% endblock %}
+
+{% block content %}
+<div class="section-header">
+    Instellingen
+</div>
+
+<form id="settingsForm">
+    <!-- Opname instellingen -->
+    <div class="settings-section">
+        <h3>&#x1F3A4; Opname</h3>
+        <div class="setting-row">
+            <div>
+                <label>Opname actief</label>
+                <div class="setting-desc">Start/stop de opname service</div>
+            </div>
+            <label class="toggle">
+                <input type="checkbox" name="recording.enabled"
+                       {% if config.get('recording.enabled', 'true') == 'true' %}checked{% endif %}>
+                <span class="slider"></span>
+            </label>
+        </div>
+        <div class="setting-row">
+            <div>
+                <label>Sample rate (Hz)</label>
+                <div class="setting-desc">Ultramic 200K standaard: 200000</div>
+            </div>
+            <input type="number" name="recording.sample_rate"
+                   value="{{ config.get('recording.sample_rate', '200000') }}">
+        </div>
+        <div class="setting-row">
+            <div>
+                <label>Blok duur (seconden)</label>
+                <div class="setting-desc">Lengte van elk opnameblok voor analyse</div>
+            </div>
+            <input type="number" name="recording.duration_seconds"
+                   value="{{ config.get('recording.duration_seconds', '5') }}" min="1" max="30">
+        </div>
+        <div class="setting-row">
+            <div>
+                <label>Microfoon naam</label>
+                <div class="setting-desc">Zoekterm voor USB audio device</div>
+            </div>
+            <input type="text" name="recording.device_name"
+                   value="{{ config.get('recording.device_name', 'UltraMic') }}">
+        </div>
+    </div>
+
+    <!-- Detectie instellingen -->
+    <div class="settings-section">
+        <h3>&#x1F50D; Detectie</h3>
+        <div class="setting-row">
+            <div>
+                <label>Detectie drempel</label>
+                <div class="setting-desc">Minimale waarschijnlijkheid voor een detectie (0.0-1.0)</div>
+            </div>
+            <input type="number" name="detection.threshold"
+                   value="{{ config.get('detection.threshold', '0.3') }}"
+                   step="0.05" min="0.05" max="0.95">
+        </div>
+        <div class="setting-row">
+            <div>
+                <label>Soort drempel</label>
+                <div class="setting-desc">Minimale waarschijnlijkheid voor soortherkenning</div>
+            </div>
+            <input type="number" name="detection.species_threshold"
+                   value="{{ config.get('detection.species_threshold', '0.2') }}"
+                   step="0.05" min="0.05" max="0.95">
+        </div>
+    </div>
+
+    <!-- Opslag instellingen -->
+    <div class="settings-section">
+        <h3>&#x1F4BE; Opslag</h3>
+        <div class="setting-row">
+            <div>
+                <label>Opnames map</label>
+                <div class="setting-desc">Pad voor audio bestanden</div>
+            </div>
+            <input type="text" name="storage.recordings_dir"
+                   value="{{ config.get('storage.recordings_dir') }}" style="width: 350px;">
+        </div>
+        <div class="setting-row">
+            <div>
+                <label>Spectrogrammen map</label>
+                <div class="setting-desc">Pad voor spectrogram afbeeldingen</div>
+            </div>
+            <input type="text" name="storage.spectrograms_dir"
+                   value="{{ config.get('storage.spectrograms_dir') }}" style="width: 350px;">
+        </div>
+        <div class="setting-row">
+            <div>
+                <label>Bewaartermijn (dagen)</label>
+                <div class="setting-desc">Audio bestanden ouder dan dit worden verwijderd</div>
+            </div>
+            <input type="number" name="storage.retention_days"
+                   value="{{ config.get('storage.retention_days', '30') }}" min="1" max="365">
+        </div>
+    </div>
+
+    <!-- Station instellingen -->
+    <div class="settings-section">
+        <h3>&#x1F4CD; Station</h3>
+        <div class="setting-row">
+            <div>
+                <label>Station naam</label>
+            </div>
+            <input type="text" name="station.name"
+                   value="{{ config.get('station.name', 'emsn-bats') }}">
+        </div>
+        <div class="setting-row">
+            <div>
+                <label>Locatie</label>
+            </div>
+            <input type="text" name="station.location"
+                   value="{{ config.get('station.location', 'Nijverdal') }}">
+        </div>
+        <div class="setting-row">
+            <div>
+                <label>Breedtegraad</label>
+            </div>
+            <input type="text" name="station.lat"
+                   value="{{ config.get('station.lat', '52.360179') }}">
+        </div>
+        <div class="setting-row">
+            <div>
+                <label>Lengtegraad</label>
+            </div>
+            <input type="text" name="station.lon"
+                   value="{{ config.get('station.lon', '6.472626') }}">
+        </div>
+    </div>
+
+    <div style="text-align: center; margin-top: 20px;">
+        <button type="submit" class="btn">Opslaan</button>
+        <button type="button" class="btn btn-danger" onclick="resetDefaults()"
+                style="margin-left: 10px;">Reset naar standaard</button>
+    </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('settingsForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = new FormData(this);
+    const data = {};
+
+    // Normale velden
+    for (const [key, value] of formData.entries()) {
+        data[key] = value;
+    }
+
+    // Checkboxes (unchecked worden niet meegestuurd)
+    this.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+        data[cb.name] = cb.checked ? 'true' : 'false';
+    });
+
+    fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(result => {
+        if (result.status === 'ok') {
+            showToast('Instellingen opgeslagen! (' + result.saved + ' waarden)');
+        } else {
+            showToast('Fout: ' + result.error);
+        }
+    })
+    .catch(err => showToast('Fout bij opslaan: ' + err));
+});
+
+function resetDefaults() {
+    if (confirm('Weet je zeker dat je alle instellingen wilt resetten naar standaard?')) {
+        const defaults = {{ defaults|tojson }};
+        fetch('/api/settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(defaults)
+        })
+        .then(r => r.json())
+        .then(() => { location.reload(); });
+    }
+}
+</script>
+{% endblock %}

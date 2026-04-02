@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}EMSN Bats - Spectrogram{% endblock %}
+
+{% block content %}
+{% if detection %}
+<div class="section-header">
+    Laatste detectie: {{ detection.detection_time }}
+</div>
+
+<div class="detection-card" style="justify-content: center; flex-direction: column; padding: 20px;">
+    <div style="text-align: center; margin-bottom: 15px;">
+        <div class="species-name" style="font-size: 1.5em;">
+            {{ detection.species_dutch or detection.species|dutch_name }}
+        </div>
+        <div class="species-latin" style="color: var(--accent-light); font-style: italic;">
+            {{ detection.species }}
+        </div>
+        <div style="margin-top: 8px;">
+            <span class="confidence-badge
+                {% if detection.confidence >= 0.7 %}confidence-high
+                {% elif detection.confidence >= 0.4 %}confidence-medium
+                {% else %}confidence-low{% endif %}">
+                Confidence: {{ (detection.confidence * 100)|int }}%
+            </span>
+        </div>
+        <div class="frequency-info" style="margin-top: 5px;">
+            {{ (detection.frequency_low / 1000)|round(1) }} - {{ (detection.frequency_high / 1000)|round(1) }} kHz
+            | Duur: {{ detection.duration_ms|round(1) }}ms
+        </div>
+    </div>
+</div>
+
+{% if detection.spectrogram_path %}
+<div class="spectrogram-container">
+    <img src="/spectrograms/{{ detection.spectrogram_path.split('/spectrograms/')[-1] }}"
+         alt="Spectrogram {{ detection.species }}">
+</div>
+{% endif %}
+
+{% if detection.audio_path %}
+<div style="text-align: center; margin-top: 15px;">
+    <audio controls style="width: 80%;">
+        <source src="/recordings/{{ detection.audio_path.split('/recordings/')[-1] }}" type="audio/wav">
+    </audio>
+    <div class="frequency-info" style="margin-top: 5px;">
+        Let op: ultrasoon audio (200kHz) - niet hoorbaar zonder conversie
+    </div>
+</div>
+{% endif %}
+
+{% else %}
+<div class="section-header">
+    Nog geen detecties. Wacht op de eerste vleermuis!
+</div>
+{% endif %}
+{% endblock %}
