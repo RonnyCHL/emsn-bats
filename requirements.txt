@@ -1,7 +1,9 @@
 # BatDetect2 en dependencies
 batdetect2
-torch
-torchaudio
+# Pi 4 CPU (Cortex-A72) mist ASIMDHP/FP16 die torch 2.8+ vereist → SIGILL bij inference
+torch==2.7.1
+--extra-index-url https://download.pytorch.org/whl/cpu
+torchaudio==2.7.1
 
 # Audio opname
 sounddevice
