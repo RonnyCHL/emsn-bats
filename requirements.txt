@@ -6,7 +6,9 @@ torchaudio
 # Audio opname
 sounddevice
 soundfile
-numpy
+numpy<2
+librosa==0.10.2
+numba==0.65.0
 
 # Database
 psycopg2-binary
@@ -17,3 +19,8 @@ paho-mqtt
 # Utilities
 pyyaml
 requests
+
+# Web UI
+flask
+waitress
+loguru
