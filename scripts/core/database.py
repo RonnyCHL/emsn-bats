@@ -4,7 +4,7 @@ import sqlite3
 import threading
 from pathlib import Path
 
-DB_PATH = Path.home() / "emsn-bats" / "data" / "bats.db"
+DB_PATH = Path.home() / "emsn-sonar" / "data" / "bats.db"
 
 _local = threading.local()
 
@@ -38,7 +38,7 @@ def init_db():
             file_name TEXT,
             audio_path TEXT,
             spectrogram_path TEXT,
-            station TEXT DEFAULT 'emsn-bats',
+            station TEXT DEFAULT 'emsn-sonar',
             synced_to_pg INTEGER DEFAULT 0,
             created_at TEXT DEFAULT (datetime('now', 'localtime'))
         );
@@ -114,7 +114,7 @@ def insert_detection(detection: dict) -> int:
             detection.get("file_name"),
             detection.get("audio_path"),
             detection.get("spectrogram_path"),
-            detection.get("station", "emsn-bats"),
+            detection.get("station", "emsn-sonar"),
         ),
     )
     conn.commit()

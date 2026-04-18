@@ -1,0 +1,16 @@
+[Unit]
+Description=EMSN Sonar BattyBirdNET-Bavaria PostgreSQL Sync
+After=network-online.target sonar-bavaria.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ronny
+WorkingDirectory=/home/ronny/emsn-sonar
+ExecStart=/home/ronny/emsn-sonar/venv/bin/python3 -m scripts.sync.bavaria_sync
+
+Environment=PYTHONUNBUFFERED=1
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=sonar-bavaria-sync

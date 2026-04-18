@@ -1,0 +1,16 @@
+[Unit]
+Description=EMSN Sonar PostgreSQL Sync - SQLite naar PostgreSQL
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ronny
+WorkingDirectory=/home/ronny/emsn-sonar
+ExecStart=/home/ronny/emsn-sonar/venv/bin/python3 -m scripts.sync.batdetect2_sync
+
+Environment=PYTHONUNBUFFERED=1
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=sonar-batdetect2-sync

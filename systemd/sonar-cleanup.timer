@@ -1,5 +1,5 @@
 [Unit]
-Description=EMSN Bats Cleanup Timer - Dagelijks om 05:00
+Description=EMSN Sonar Cleanup Timer - Dagelijks om 05:00
 
 [Timer]
 OnCalendar=*-*-* 05:00:00

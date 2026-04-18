@@ -1,4 +1,4 @@
-# EMSN Bats - Instructies voor Claude Code
+# EMSN Sonar - Instructies voor Claude Code
 
 ## Rol
 Claude Code is de **absolute IT specialist** voor dit project.
@@ -41,14 +41,14 @@ Eigenaar: Ronny Hullegie
 - **MQTT** broker op Zolder (192.168.1.178:1883)
 
 ## Netwerk
-- **Pi Bats (emsn-bats):** 192.168.1.88
+- **Pi Bats (emsn-sonar):** 192.168.1.88
 - **NAS (DS224Plus):** 192.168.1.25
 - **MQTT Broker (Zolder):** 192.168.1.178:1883
 - **Grafana:** http://192.168.1.25:3000
 
 ## Database
 - Tabel: `bat_detections` in PostgreSQL database `emsn`
-- Grafana dashboard: emsn-bat-monitoring (al voorbereid)
+- Grafana dashboard: emsn-sonar-monitoring (al voorbereid)
 
 ## MQTT Topics
 - `emsn2/bats/detection` - Live vleermuisdetecties

@@ -1,4 +1,4 @@
-"""Configuratie voor EMSN Bats - instelbaar via Web UI."""
+"""Configuratie voor EMSN Sonar - instelbaar via Web UI."""
 
 from scripts.core.database import get_setting, set_setting
 
@@ -15,14 +15,14 @@ DEFAULTS = {
     "detection.threshold": "0.3",
     "detection.species_threshold": "0.2",
     # Opslag
-    "storage.recordings_dir": "/home/ronny/emsn-bats/recordings",
-    "storage.spectrograms_dir": "/home/ronny/emsn-bats/spectrograms",
+    "storage.recordings_dir": "/home/ronny/emsn-sonar/recordings",
+    "storage.spectrograms_dir": "/home/ronny/emsn-sonar/spectrograms",
     "storage.retention_days": "30",
     # Web UI
     "web.port": "8088",
     "web.host": "0.0.0.0",
     # Station
-    "station.name": "emsn-bats",
+    "station.name": "emsn-sonar",
     "station.location": "Nijverdal",
     "station.lat": "52.360179",
     "station.lon": "6.472626",

@@ -3,7 +3,7 @@
 
 CREATE TABLE IF NOT EXISTS bat_detections (
     id SERIAL PRIMARY KEY,
-    station VARCHAR(50) NOT NULL DEFAULT 'emsn-bats',
+    station VARCHAR(50) NOT NULL DEFAULT 'emsn-sonar',
     detection_timestamp TIMESTAMPTZ NOT NULL,
     species VARCHAR(100),
     species_dutch VARCHAR(100),

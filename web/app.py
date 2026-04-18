@@ -1,4 +1,4 @@
-"""EMSN Bats Web UI - BirdNET-Pi stijl interface voor vleermuismonitoring."""
+"""EMSN Sonar Web UI - BirdNET-Pi stijl interface voor vleermuismonitoring."""
 
 import json
 import sys
@@ -310,7 +310,7 @@ def main():
     """Start de web server."""
     port = get_config_int("web.port")
     host = get_config("web.host")
-    print(f"EMSN Bats Web UI: http://{host}:{port}")
+    print(f"EMSN Sonar Web UI: http://{host}:{port}")
     app.run(host=host, port=port, debug=False)
 
 

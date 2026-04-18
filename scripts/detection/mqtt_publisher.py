@@ -1,7 +1,7 @@
 """MQTT publisher voor vleermuisdetecties.
 
 Publiceert live detecties naar de EMSN MQTT broker.
-Wordt aangeroepen vanuit bat_monitor.py bij elke detectie.
+Wordt aangeroepen vanuit sonar_monitor.py bij elke detectie.
 """
 
 import json
@@ -38,7 +38,7 @@ def _get_client() -> mqtt.Client | None:
 
         _client = mqtt.Client(
             mqtt.CallbackAPIVersion.VERSION2,
-            client_id="emsn-bats-publisher",
+            client_id="emsn-sonar-publisher",
         )
         _client.username_pw_set(config["user"], config["password"])
 
@@ -102,7 +102,7 @@ def publish_detection(detection: dict) -> bool:
                 "frequency_high": detection.get("frequency_high"),
                 "frequency_peak": detection.get("frequency_peak"),
                 "duration_ms": round(detection.get("duration_ms", 0), 1),
-                "station": detection.get("station", "emsn-bats"),
+                "station": detection.get("station", "emsn-sonar"),
             },
             ensure_ascii=False,
         )

@@ -15,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from scripts.core.database import get_connection as get_sqlite
 from scripts.core.secrets import get_pg_config
 
-logger = logging.getLogger("bat_sync")
+logger = logging.getLogger("batdetect2_sync")
 
 
 def get_pg_connection() -> psycopg2.extensions.connection:

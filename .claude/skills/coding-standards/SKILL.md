@@ -1,9 +1,9 @@
 ---
 name: coding-standards
-description: EMSN Bats coding standards en best practices. Claude is de absolute IT autoriteit - schrijft schone, moderne code op ziekenhuis niveau. Gebruik bij alle code-gerelateerde taken.
+description: EMSN Sonar coding standards en best practices. Claude is de absolute IT autoriteit - schrijft schone, moderne code op ziekenhuis niveau. Gebruik bij alle code-gerelateerde taken.
 ---
 
-# EMSN Bats Coding Standards
+# EMSN Sonar Coding Standards
 
 ## Claude's Rol
 
@@ -92,7 +92,7 @@ except Exception:
 - `WatchdogSec` voor lange-draaiende services
 - `ProtectHome=read-only` waar mogelijk
 - `PYTHONUNBUFFERED=1` voor directe log output
-- Venv Python pad: `/home/ronny/emsn-bats/venv/bin/python3`
+- Venv Python pad: `/home/ronny/emsn-sonar/venv/bin/python3`
 
 ## Project Structuur
 ```

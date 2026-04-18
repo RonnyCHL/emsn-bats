@@ -1,12 +1,12 @@
 [Unit]
-Description=EMSN Bats Web UI - Vleermuismonitoring Dashboard
+Description=EMSN Sonar Web UI - Vleermuismonitoring Dashboard
 After=network.target
 
 [Service]
 Type=simple
 User=ronny
-WorkingDirectory=/home/ronny/emsn-bats
-ExecStart=/home/ronny/emsn-bats/venv/bin/python3 -m web.app
+WorkingDirectory=/home/ronny/emsn-sonar
+ExecStart=/home/ronny/emsn-sonar/venv/bin/python3 -m web.app
 Restart=on-failure
 RestartSec=10
 
@@ -14,7 +14,7 @@ Environment=PYTHONUNBUFFERED=1
 
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=emsn-bats-web
+SyslogIdentifier=emsn-sonar-web
 
 [Install]
 WantedBy=multi-user.target

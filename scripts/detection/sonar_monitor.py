@@ -15,10 +15,10 @@ import numpy as np
 import sounddevice as sd
 import soundfile as sf
 
-logger = logging.getLogger("bat_monitor")
+logger = logging.getLogger("sonar_monitor")
 
 
-class BatMonitor:
+class SonarMonitor:
     """Hoofd monitoring loop: opname -> analyse -> opslag."""
 
     def __init__(self):
@@ -303,16 +303,16 @@ def main():
         handlers=[
             logging.StreamHandler(),
             logging.FileHandler(
-                Path.home() / "emsn-bats" / "logs" / "bat_monitor.log"
+                Path.home() / "emsn-sonar" / "logs" / "bat_monitor.log"
             ),
         ],
     )
 
     # Maak log directory
-    log_dir = Path.home() / "emsn-bats" / "logs"
+    log_dir = Path.home() / "emsn-sonar" / "logs"
     log_dir.mkdir(parents=True, exist_ok=True)
 
-    monitor = BatMonitor()
+    monitor = SonarMonitor()
     monitor.run()
 
 

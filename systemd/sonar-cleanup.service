@@ -1,0 +1,14 @@
+[Unit]
+Description=EMSN Sonar Cleanup - Verwijder oude audio en spectrogrammen
+
+[Service]
+Type=oneshot
+User=ronny
+WorkingDirectory=/home/ronny/emsn-sonar
+ExecStart=/home/ronny/emsn-sonar/venv/bin/python3 -m scripts.archive.cleanup
+
+Environment=PYTHONUNBUFFERED=1
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=sonar-cleanup

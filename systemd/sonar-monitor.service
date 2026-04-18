@@ -1,13 +1,13 @@
 [Unit]
-Description=EMSN Bats Monitor - Vleermuisdetectie met BatDetect2
+Description=EMSN Sonar Monitor - Vleermuisdetectie met BatDetect2
 After=network.target sound.target
 Wants=network.target
 
 [Service]
 Type=simple
 User=ronny
-WorkingDirectory=/home/ronny/emsn-bats
-ExecStart=/home/ronny/emsn-bats/venv/bin/python3 -m scripts.detection.bat_monitor
+WorkingDirectory=/home/ronny/emsn-sonar
+ExecStart=/home/ronny/emsn-sonar/venv/bin/python3 -m scripts.detection.sonar_monitor
 Restart=on-failure
 RestartSec=10
 WatchdogSec=300
@@ -17,7 +17,7 @@ Environment=NUMBA_DISABLE_JIT=1
 
 StandardOutput=journal
 StandardError=journal
-SyslogIdentifier=bat-monitor
+SyslogIdentifier=sonar-monitor
 
 [Install]
 WantedBy=multi-user.target

@@ -1,5 +1,5 @@
 [Unit]
-Description=EMSN Bats PostgreSQL Sync Timer - Elk uur op :15
+Description=EMSN Sonar PostgreSQL Sync Timer - Elk uur op :15
 
 [Timer]
 OnCalendar=*-*-* *:15:00

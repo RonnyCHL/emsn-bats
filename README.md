@@ -1,4 +1,4 @@
-# EMSN Bats - Vleermuismonitoring
+# EMSN Sonar - Vleermuismonitoring
 
 Geautomatiseerde vleermuisdetectie en -classificatie voor het Ecologisch Monitoring Systeem Nijverdal (EMSN).
 
@@ -50,7 +50,7 @@ docs/
 
 ## Netwerk
 
-- **Pi Bats (emsn-bats):** 192.168.1.88
+- **Pi Bats (emsn-sonar):** 192.168.1.88
 - **NAS:** 192.168.1.25
 - **MQTT Broker:** 192.168.1.178 (Pi Zolder)
 - **Grafana:** http://192.168.1.25:3000

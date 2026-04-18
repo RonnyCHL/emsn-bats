@@ -1,4 +1,4 @@
-"""Health check voor EMSN Bats.
+"""Health check voor EMSN Sonar.
 
 Controleert alle componenten en publiceert status naar MQTT.
 """
@@ -19,13 +19,13 @@ from scripts.core.database import get_connection, get_today_stats, init_db
 logger = logging.getLogger("bat_health")
 
 SERVICES = [
-    "bat-monitor.service",
-    "emsn-bats-web.service",
+    "sonar-monitor.service",
+    "emsn-sonar-web.service",
 ]
 
 TIMERS = [
-    "bat-cleanup.timer",
-    "bat-sync.timer",
+    "sonar-cleanup.timer",
+    "sonar-batdetect2-sync.timer",
 ]
 
 
@@ -95,7 +95,7 @@ def run_health_check() -> dict:
 
     health = {
         "timestamp": datetime.now().isoformat(),
-        "station": "emsn-bats",
+        "station": "emsn-sonar",
         "services": [check_service_status(s) for s in SERVICES],
         "timers": [check_service_status(t) for t in TIMERS],
         "disk": check_disk_space(),

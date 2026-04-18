@@ -6,7 +6,7 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 _secrets: dict[str, str] = {}
-_SECRETS_PATH = Path.home() / "emsn-bats" / ".secrets"
+_SECRETS_PATH = Path.home() / "emsn-sonar" / ".secrets"
 
 
 def _load_secrets() -> dict[str, str]:

@@ -1,0 +1,25 @@
+[Unit]
+Description=EMSN Sonar Bavaria Watcher - BattyBirdNET-Bavaria op emsn-sonar WAVs
+After=network.target sonar-monitor.service
+Wants=sonar-monitor.service
+
+[Service]
+Type=simple
+User=ronny
+WorkingDirectory=/home/ronny/emsn-sonar
+ExecStart=/home/ronny/BattyBirdNET-Analyzer/venv/bin/python3 /home/ronny/emsn-sonar/scripts/bavaria/bavaria_watcher.py
+Restart=on-failure
+RestartSec=15
+
+Environment=PYTHONUNBUFFERED=1
+Environment=NUMBA_DISABLE_JIT=1
+
+Nice=10
+CPUWeight=50
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=sonar-bavaria
+
+[Install]
+WantedBy=multi-user.target

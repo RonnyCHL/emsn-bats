@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""BattyBirdNET watcher voor emsn-bats Pi.
+"""BattyBirdNET watcher voor emsn-sonar Pi.
 
-Watcht ~/emsn-bats/recordings/ voor nieuwe WAV bestanden, draait
+Watcht ~/emsn-sonar/recordings/ voor nieuwe WAV bestanden, draait
 bat_ident.py (Bavaria model) en slaat detecties op in een SQLite DB
 naast die van BatDetect2. Geeft een onafhankelijk tweede oordeel
-op exact dezelfde audio die emsn-bats opneemt.
+op exact dezelfde audio die emsn-sonar opneemt.
 """
 
 from __future__ import annotations
@@ -21,11 +21,11 @@ from pathlib import Path
 
 # Vaste paden - dit script draait altijd op de Bats Pi
 HOME = Path.home()
-RECORDINGS_DIR = HOME / "emsn-bats" / "recordings"
+RECORDINGS_DIR = HOME / "emsn-sonar" / "recordings"
 ANALYZER_DIR = HOME / "BattyBirdNET-Analyzer"
 ANALYZER_VENV_PY = ANALYZER_DIR / "venv" / "bin" / "python3"
 ANALYZER_SCRIPT = ANALYZER_DIR / "bat_ident.py"
-DB_PATH = HOME / "emsn-bats" / "data" / "batty_bavaria.db"
+DB_PATH = HOME / "emsn-sonar" / "data" / "batty_bavaria.db"
 TMP_OUT_DIR = Path("/tmp/batty_results")
 
 POLL_INTERVAL_SEC = 30
@@ -38,7 +38,7 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(message)s",
     stream=sys.stdout,
 )
-log = logging.getLogger("batty-watcher")
+log = logging.getLogger("sonar-bavaria")
 
 _running = True
 

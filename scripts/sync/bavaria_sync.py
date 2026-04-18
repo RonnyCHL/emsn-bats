@@ -1,7 +1,7 @@
 """BattyBirdNET-Bavaria SQLite → PostgreSQL sync.
 
 Synchroniseert vleermuis detecties uit de Bavaria-model SQLite DB
-(geschreven door batty_watcher.py) naar de centrale PostgreSQL bat_detections
+(geschreven door bavaria_watcher.py) naar de centrale PostgreSQL bat_detections
 tabel op de NAS, met detector='bavaria' als marker.
 
 Gebruikt ON CONFLICT DO NOTHING op (detection_timestamp, station, species,
@@ -24,9 +24,9 @@ from scripts.core.config import get_config
 from scripts.core.secrets import get_pg_config
 from scripts.core.species import get_dutch_name
 
-logger = logging.getLogger("batty_pg_sync")
+logger = logging.getLogger("bavaria_sync")
 
-DB_PATH: Path = Path.home() / "emsn-bats" / "data" / "batty_bavaria.db"
+DB_PATH: Path = Path.home() / "emsn-sonar" / "data" / "batty_bavaria.db"
 BATCH_SIZE: int = 1000
 DETECTOR: str = "bavaria"
 
@@ -94,7 +94,7 @@ def sync_detections() -> int:
         logger.info("Bavaria DB nog niet aangemaakt op %s - niets te doen", DB_PATH)
         return 0
 
-    station = get_config("station.name") or "emsn-bats"
+    station = get_config("station.name") or "emsn-sonar"
 
     sqlite_conn = _get_sqlite_connection()
     try:
