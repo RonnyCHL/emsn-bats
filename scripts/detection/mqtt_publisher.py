@@ -17,10 +17,11 @@ logger = logging.getLogger(__name__)
 _client: mqtt.Client | None = None
 _connected = False
 
-# MQTT Topics
-TOPIC_DETECTION = "emsn2/bats/detection"
-TOPIC_STATS = "emsn2/bats/stats"
-TOPIC_HEALTH = "emsn2/bats/health"
+# MQTT Topics - gebruikt door sonar-monitor (BatDetect2) en sonar-bavaria (Bavaria)
+# De detector wordt als key in het JSON payload opgenomen.
+TOPIC_DETECTION = "emsn2/sonar/detection"
+TOPIC_STATS = "emsn2/sonar/stats"
+TOPIC_HEALTH = "emsn2/sonar/health"
 
 
 def _get_client() -> mqtt.Client | None:
@@ -103,6 +104,7 @@ def publish_detection(detection: dict) -> bool:
                 "frequency_peak": detection.get("frequency_peak"),
                 "duration_ms": round(detection.get("duration_ms", 0), 1),
                 "station": detection.get("station", "emsn-sonar"),
+                "detector": detection.get("detector", "batdetect2"),
             },
             ensure_ascii=False,
         )

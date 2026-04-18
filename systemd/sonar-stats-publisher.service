@@ -1,0 +1,15 @@
+[Unit]
+Description=EMSN Sonar Stats → MQTT publisher
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ronny
+WorkingDirectory=/home/ronny/emsn-sonar
+ExecStart=/home/ronny/emsn-sonar/venv/bin/python3 -m scripts.monitoring.stats_publisher
+
+Environment=PYTHONUNBUFFERED=1
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=sonar-stats-publisher

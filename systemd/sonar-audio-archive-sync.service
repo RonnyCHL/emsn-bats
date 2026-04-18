@@ -1,0 +1,18 @@
+[Unit]
+Description=EMSN Sonar Audio + Spectrogram Sync naar NAS archief
+After=network-online.target remote-fs.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ronny
+ExecStart=/bin/bash /home/ronny/emsn-sonar/scripts/archive/audio_archive_sync.sh
+
+Environment=PYTHONUNBUFFERED=1
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=sonar-audio-archive-sync
+
+Nice=15
+IOSchedulingClass=best-effort
+IOSchedulingPriority=6

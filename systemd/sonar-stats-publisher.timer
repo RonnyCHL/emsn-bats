@@ -1,0 +1,10 @@
+[Unit]
+Description=EMSN Sonar Stats Publisher Timer - Elke 5 minuten
+
+[Timer]
+OnBootSec=60
+OnUnitActiveSec=5min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

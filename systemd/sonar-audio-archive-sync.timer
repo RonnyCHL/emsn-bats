@@ -1,0 +1,9 @@
+[Unit]
+Description=EMSN Sonar Audio Archive Timer - Elk uur op :30
+
+[Timer]
+OnCalendar=*-*-* *:30:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

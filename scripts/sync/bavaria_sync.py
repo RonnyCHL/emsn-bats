@@ -77,7 +77,8 @@ def _to_insert_params(row: sqlite3.Row, station: str) -> tuple:
         duration_ms,
         Path(wav_path).name,  # file_name
         wav_path,  # audio_path
-        None,  # spectrogram_path - Bavaria schrijft geen eigen spectrogrammen
+        # spectrogram_path uit sqlite row (None als watcher nog geen PNG had)
+        (row["spectrogram_path"] if "spectrogram_path" in row.keys() else None),
         station,
         DETECTOR,
     )
@@ -100,7 +101,8 @@ def sync_detections() -> int:
     try:
         rows = sqlite_conn.execute(
             """SELECT id, wav_path, recorded_at, start_s, end_s,
-                      scientific_name, common_name, confidence
+                      scientific_name, common_name, confidence,
+                      spectrogram_path
                FROM detections
                WHERE synced_to_pg = 0
                ORDER BY id

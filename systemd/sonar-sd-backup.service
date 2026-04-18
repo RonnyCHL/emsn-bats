@@ -1,0 +1,16 @@
+[Unit]
+Description=EMSN Sonar SD rsync backup naar NAS
+After=network-online.target remote-fs.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+ExecStart=/bin/bash /home/ronny/emsn-sonar/scripts/backup/sd_backup_rsync.sh
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=sonar-sd-backup
+
+Nice=19
+IOSchedulingClass=idle

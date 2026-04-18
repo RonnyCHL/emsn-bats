@@ -16,7 +16,7 @@ import sqlite3
 import subprocess
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 
 # Vaste paden - dit script draait altijd op de Bats Pi
@@ -27,6 +27,7 @@ ANALYZER_VENV_PY = ANALYZER_DIR / "venv" / "bin" / "python3"
 ANALYZER_SCRIPT = ANALYZER_DIR / "bat_ident.py"
 DB_PATH = HOME / "emsn-sonar" / "data" / "batty_bavaria.db"
 TMP_OUT_DIR = Path("/tmp/batty_results")
+SPECTROGRAMS_DIR = HOME / "emsn-sonar" / "spectrograms" / "bavaria"
 
 POLL_INTERVAL_SEC = 30
 MIN_CONFIDENCE = 0.5
@@ -81,16 +82,19 @@ def init_db() -> sqlite3.Connection:
             confidence REAL NOT NULL,
             model_area TEXT NOT NULL,
             inserted_at TEXT NOT NULL,
-            synced_to_pg INTEGER NOT NULL DEFAULT 0
+            synced_to_pg INTEGER NOT NULL DEFAULT 0,
+            spectrogram_path TEXT
         )
         """
     )
-    # Migreer bestaande DBs zonder synced_to_pg kolom (idempotent)
+    # Migreer bestaande DBs zonder nieuwe kolommen (idempotent)
     cols = [r[1] for r in conn.execute("PRAGMA table_info(detections)").fetchall()]
     if "synced_to_pg" not in cols:
         conn.execute(
             "ALTER TABLE detections ADD COLUMN synced_to_pg INTEGER NOT NULL DEFAULT 0"
         )
+    if "spectrogram_path" not in cols:
+        conn.execute("ALTER TABLE detections ADD COLUMN spectrogram_path TEXT")
     conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_detections_recorded ON detections(recorded_at)"
     )
@@ -207,8 +211,9 @@ def store_results(
                 """
                 INSERT INTO detections
                     (wav_path, recorded_at, start_s, end_s, scientific_name,
-                     common_name, confidence, model_area, inserted_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                     common_name, confidence, model_area, inserted_at,
+                     spectrogram_path)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     str(wav_path),
@@ -220,6 +225,7 @@ def store_results(
                     det["confidence"],
                     AREA,
                     now,
+                    det.get("spectrogram_path"),
                 ),
             )
         conn.execute(
@@ -232,6 +238,99 @@ def store_results(
         )
 
 
+def _generate_spectrogram(wav_path: Path, detection: dict) -> Path | None:
+    """Genereer een spectrogram PNG voor één Bavaria detectie.
+
+    Gebruikt soundfile + numpy + matplotlib (geen extra dependencies nodig,
+    al beschikbaar in BattyBirdNET-Analyzer venv).
+
+    Returns:
+        Pad naar PNG bestand, of None als genereren mislukte.
+    """
+    try:
+        import numpy as np
+        import soundfile as sf
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+    except ImportError:
+        return None
+
+    try:
+        recorded_at = parse_recorded_at(wav_path)
+        base_dt = datetime.fromisoformat(recorded_at)
+        det_ts = base_dt + timedelta(seconds=detection["start_s"])
+        date_dir = SPECTROGRAMS_DIR / det_ts.strftime("%Y-%m-%d")
+        date_dir.mkdir(parents=True, exist_ok=True)
+
+        safe_species = detection["scientific_name"].replace(" ", "_")
+        out_path = date_dir / (
+            f"bavaria_{det_ts.strftime('%H-%M-%S')}_{safe_species}_"
+            f"{int(detection['confidence'] * 100)}.png"
+        )
+        if out_path.exists():
+            return out_path
+
+        audio, sr = sf.read(str(wav_path), dtype="float32")
+        start_sample = max(0, int(detection["start_s"] * sr))
+        end_sample = min(len(audio), int(detection["end_s"] * sr))
+        segment = audio[start_sample:end_sample]
+        if len(segment) < sr // 100:  # < 10ms
+            return None
+
+        fig, ax = plt.subplots(figsize=(10, 4), dpi=100)
+        fig.patch.set_facecolor("#0A0A0A")
+        ax.set_facecolor("#0A0A0A")
+        ax.specgram(
+            segment, NFFT=512, Fs=sr, noverlap=384, cmap="inferno",
+            vmin=-100, vmax=-20,
+        )
+        ax.set_ylim(0, sr / 2)
+        ax.set_xlabel("Tijd (s)", color="#A8A8A8")
+        ax.set_ylabel("Frequentie (Hz)", color="#A8A8A8")
+        ax.tick_params(colors="#A8A8A8")
+        for spine in ax.spines.values():
+            spine.set_color("#2A2A2A")
+        title = (
+            f"{detection.get('common_name') or detection['scientific_name']} · "
+            f"{detection['confidence']:.2f} · Bavaria"
+        )
+        ax.set_title(title, color="#FF6B1A", fontsize=11, pad=10)
+        fig.tight_layout()
+        fig.savefig(str(out_path), facecolor=fig.get_facecolor())
+        plt.close(fig)
+        return out_path
+    except Exception:
+        log.exception("Spectrogram genereren mislukt voor %s", wav_path.name)
+        return None
+
+
+def _publish_to_mqtt(wav_path: Path, detections: list[dict]) -> None:
+    """Publiceer Bavaria detecties naar MQTT (best effort, geen fail)."""
+    if not detections:
+        return
+    try:
+        # Lazy import - mqtt is optioneel, niet blokkerend
+        sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+        from scripts.detection.mqtt_publisher import publish_detection
+    except ImportError:
+        return
+
+    recorded_at = parse_recorded_at(wav_path)
+    base_dt = datetime.fromisoformat(recorded_at)
+    for det in detections:
+        ts = base_dt + timedelta(seconds=det["start_s"])
+        publish_detection({
+            "detection_time": ts.isoformat(timespec="seconds"),
+            "species": det["scientific_name"],
+            "species_dutch": det["common_name"],
+            "confidence": det["confidence"],
+            "duration_ms": (det["end_s"] - det["start_s"]) * 1000,
+            "station": "emsn-sonar",
+            "detector": "bavaria",
+        })
+
+
 def process_one(conn: sqlite3.Connection, wav_path: Path) -> int:
     """Verwerk één WAV. Return aantal detecties."""
     csv_path = run_analyzer(wav_path)
@@ -239,7 +338,13 @@ def process_one(conn: sqlite3.Connection, wav_path: Path) -> int:
         store_results(conn, wav_path, [], error="analyzer_failed")
         return 0
     detections = parse_csv(csv_path)
+    # Genereer spectrogrammen vóór opslaan zodat het pad mee wordt geschreven
+    for det in detections:
+        spec = _generate_spectrogram(wav_path, det)
+        if spec is not None:
+            det["spectrogram_path"] = str(spec)
     store_results(conn, wav_path, detections)
+    _publish_to_mqtt(wav_path, detections)
     try:
         csv_path.unlink()
     except OSError:

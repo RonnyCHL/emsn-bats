@@ -1,0 +1,21 @@
+[Unit]
+Description=EMSN Sonar Reboot Alert - MQTT notificatie bij elke boot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ronny
+WorkingDirectory=/home/ronny/emsn-sonar
+ExecStart=/home/ronny/emsn-sonar/venv/bin/python3 -m scripts.monitoring.reboot_alert
+
+Environment=PYTHONUNBUFFERED=1
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=sonar-reboot-alert
+
+# Voor state persistence in /var/lib/emsn-sonar
+ReadWritePaths=/var/lib/emsn-sonar
+
+[Install]
+WantedBy=multi-user.target
