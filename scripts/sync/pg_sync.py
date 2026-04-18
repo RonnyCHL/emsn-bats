@@ -65,8 +65,11 @@ def sync_detections() -> int:
                     """INSERT INTO bat_detections
                        (detection_timestamp, species, species_dutch, confidence,
                         det_prob, frequency_min, frequency_max, frequency_peak,
-                        duration_ms, file_name, audio_path, spectrogram_path, station)
-                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                        duration_ms, file_name, audio_path, spectrogram_path,
+                        station, detector)
+                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                       ON CONFLICT (detection_timestamp, station, species, detector)
+                       DO NOTHING""",
                     (
                         row["detection_time"],
                         row["species"],
@@ -81,6 +84,7 @@ def sync_detections() -> int:
                         row["audio_path"],
                         row["spectrogram_path"],
                         row["station"],
+                        "batdetect2",
                     ),
                 )
                 synced_ids.append(row["id"])

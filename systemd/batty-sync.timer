@@ -1,0 +1,9 @@
+[Unit]
+Description=EMSN Bats BattyBirdNET Bavaria PostgreSQL Sync Timer - Elk uur op :20
+
+[Timer]
+OnCalendar=*-*-* *:20:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target
