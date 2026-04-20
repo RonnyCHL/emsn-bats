@@ -4,13 +4,15 @@ After=network.target sound.target
 Wants=network.target
 
 [Service]
-Type=simple
+Type=notify
+NotifyAccess=main
 User=ronny
 WorkingDirectory=/home/ronny/emsn-sonar
 ExecStart=/home/ronny/emsn-sonar/venv/bin/python3 -m scripts.detection.sonar_monitor
 Restart=on-failure
 RestartSec=10
 WatchdogSec=300
+TimeoutStartSec=120
 
 Environment=PYTHONUNBUFFERED=1
 Environment=NUMBA_DISABLE_JIT=1

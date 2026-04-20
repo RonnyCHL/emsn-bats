@@ -12,13 +12,10 @@ from __future__ import annotations
 
 import logging
 import sqlite3
-import sys
 from datetime import datetime, timedelta
 from pathlib import Path
 
 import psycopg2
-
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from scripts.core.config import get_config
 from scripts.core.secrets import get_pg_config

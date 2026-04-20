@@ -24,3 +24,7 @@ requests
 flask
 waitress
 loguru
+
+# Systemd integratie (voor sd_notify watchdog)
+# Vereist: sudo apt install libsystemd-dev python3-dev
+systemd-python

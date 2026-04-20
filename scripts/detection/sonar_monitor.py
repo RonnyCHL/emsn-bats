@@ -15,6 +15,8 @@ import numpy as np
 import sounddevice as sd
 import soundfile as sf
 
+from scripts.core import systemd_notify
+
 logger = logging.getLogger("sonar_monitor")
 
 
@@ -227,8 +229,16 @@ class SonarMonitor:
         signal.signal(signal.SIGTERM, self._signal_handler)
         signal.signal(signal.SIGINT, self._signal_handler)
 
+        # Signaal systemd dat we klaar zijn (Type=notify).
+        systemd_notify.ready()
+        systemd_notify.status("Monitoring actief")
+
         while self.running:
             try:
+                # Watchdog heartbeat bovenaan elke iteratie: watchdog timeout
+                # is 300s, typische cycle <10s dus ruime marge.
+                systemd_notify.watchdog()
+
                 # Herlaad config (kan via web UI gewijzigd zijn)
                 config = self._get_config()
 
@@ -287,11 +297,13 @@ class SonarMonitor:
                 logger.exception("Fout in monitoring loop")
                 time.sleep(10)
 
+        systemd_notify.stopping()
         logger.info("Bat Monitor gestopt")
 
     def _signal_handler(self, signum, frame):
         """Graceful shutdown."""
         logger.info("Stop signaal ontvangen (%s)", signum)
+        systemd_notify.status("Stoppen...")
         self.running = False
 
 

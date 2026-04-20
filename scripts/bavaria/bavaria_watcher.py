@@ -19,15 +19,40 @@ import time
 from datetime import datetime, timedelta
 from pathlib import Path
 
-# Vaste paden - dit script draait altijd op de Bats Pi
+# Vaste paden - dit script draait altijd op de Sonar Pi
 HOME = Path.home()
-RECORDINGS_DIR = HOME / "emsn-sonar" / "recordings"
 ANALYZER_DIR = HOME / "BattyBirdNET-Analyzer"
 ANALYZER_VENV_PY = ANALYZER_DIR / "venv" / "bin" / "python3"
 ANALYZER_SCRIPT = ANALYZER_DIR / "bat_ident.py"
 DB_PATH = HOME / "emsn-sonar" / "data" / "batty_bavaria.db"
 TMP_OUT_DIR = Path("/tmp/batty_results")
-SPECTROGRAMS_DIR = HOME / "emsn-sonar" / "spectrograms" / "bavaria"
+
+# Core-DB paden worden via de settings-tabel van bats.db opgehaald zodat
+# we single-source-of-truth houden met sonar_monitor. Audit 2026-04-20 H3:
+# hardcoded paden wezen naar lege directories na emsn-bats -> emsn-sonar rename.
+CORE_DB_PATH = HOME / "emsn-sonar" / "data" / "bats.db"
+
+
+def _read_core_setting(key: str, default: str) -> str:
+    """Lees een setting uit de core bats.db, met fallback."""
+    try:
+        conn = sqlite3.connect(f"file:{CORE_DB_PATH}?mode=ro", uri=True, timeout=5)
+        try:
+            cur = conn.execute("SELECT value FROM settings WHERE key = ?", (key,))
+            row = cur.fetchone()
+            return row[0] if row else default
+        finally:
+            conn.close()
+    except sqlite3.Error:
+        return default
+
+
+RECORDINGS_DIR = Path(
+    _read_core_setting("storage.recordings_dir", str(HOME / "emsn-sonar" / "recordings"))
+)
+SPECTROGRAMS_DIR = Path(
+    _read_core_setting("storage.spectrograms_dir", str(HOME / "emsn-sonar" / "spectrograms"))
+) / "bavaria"
 
 POLL_INTERVAL_SEC = 30
 MIN_CONFIDENCE = 0.5
@@ -311,7 +336,6 @@ def _publish_to_mqtt(wav_path: Path, detections: list[dict]) -> None:
         return
     try:
         # Lazy import - mqtt is optioneel, niet blokkerend
-        sys.path.insert(0, str(Path(__file__).parent.parent.parent))
         from scripts.detection.mqtt_publisher import publish_detection
     except ImportError:
         return

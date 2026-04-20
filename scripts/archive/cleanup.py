@@ -5,11 +5,8 @@ Behoudt audio bestanden die bij detecties horen langer.
 """
 
 import logging
-import sys
 from datetime import datetime, timedelta
 from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from scripts.core.config import get_config_int
 from scripts.core.database import get_connection, init_db
@@ -29,9 +26,6 @@ def cleanup_old_files() -> dict[str, int]:
 
     stats = {"audio_removed": 0, "spec_removed": 0, "dirs_removed": 0}
 
-    # Audio bestanden zonder detectie
-    recordings_dir = Path(get_config_int.__module__).parent.parent / "recordings"
-    # Gebruik config pad
     from scripts.core.config import get_config
 
     recordings_dir = Path(get_config("storage.recordings_dir"))

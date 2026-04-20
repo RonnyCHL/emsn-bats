@@ -7,11 +7,8 @@ import json
 import logging
 import shutil
 import subprocess
-import sys
 from datetime import datetime
 from pathlib import Path
-
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from scripts.core.config import get_config
 from scripts.core.database import get_connection, get_today_stats, init_db
