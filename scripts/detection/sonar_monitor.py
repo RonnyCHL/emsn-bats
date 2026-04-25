@@ -5,6 +5,8 @@ op in SQLite en genereert spectrogrammen.
 """
 
 import logging
+import os
+import resource
 import signal
 import sys
 import time
@@ -18,6 +20,14 @@ import soundfile as sf
 from scripts.core import systemd_notify
 
 logger = logging.getLogger("sonar_monitor")
+
+# FD-watchdog: harde abort als we boven deze fractie van rlimit komen.
+# Veroorzaakt door incident 2026-04-22: paho-mqtt thread-leak vrat
+# alle FDs op waardoor sounddevice uiteindelijk geen InputStream meer
+# kon openen. We laten systemd ons dan herstarten i.p.v. stilletjes
+# door te modderen.
+_FD_WARN_FRACTION = 0.5
+_FD_ABORT_FRACTION = 0.8
 
 
 class SonarMonitor:
@@ -194,6 +204,37 @@ class SonarMonitor:
             except Exception:
                 logger.debug("MQTT publish overgeslagen")
 
+    def _check_fd_health(self) -> bool:
+        """Bewaak het aantal open file descriptors van dit proces.
+
+        Returns:
+            True als het aantal open FDs binnen veilige grenzen valt.
+            Bij overschrijding van ``_FD_ABORT_FRACTION`` van de soft
+            rlimit returnen we False zodat de caller kan abort'en.
+        """
+        try:
+            soft_limit, _hard = resource.getrlimit(resource.RLIMIT_NOFILE)
+            open_fds = len(os.listdir(f"/proc/{os.getpid()}/fd"))
+        except OSError:
+            return True
+
+        if open_fds >= int(soft_limit * _FD_ABORT_FRACTION):
+            logger.error(
+                "FD-leak gedetecteerd: %d open van %d (>%.0f%%) - service stopt zodat systemd herstart",
+                open_fds,
+                soft_limit,
+                _FD_ABORT_FRACTION * 100,
+            )
+            return False
+        if open_fds >= int(soft_limit * _FD_WARN_FRACTION):
+            logger.warning(
+                "Open FDs hoog: %d van %d (>%.0f%%)",
+                open_fds,
+                soft_limit,
+                _FD_WARN_FRACTION * 100,
+            )
+        return True
+
     def run(self):
         """Start de monitoring loop."""
         from scripts.core.database import init_db
@@ -238,6 +279,10 @@ class SonarMonitor:
                 # Watchdog heartbeat bovenaan elke iteratie: watchdog timeout
                 # is 300s, typische cycle <10s dus ruime marge.
                 systemd_notify.watchdog()
+
+                if not self._check_fd_health():
+                    self.running = False
+                    sys.exit(1)
 
                 # Herlaad config (kan via web UI gewijzigd zijn)
                 config = self._get_config()

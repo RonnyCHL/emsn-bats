@@ -1,12 +1,13 @@
 /home/ronny/emsn-sonar/logs/*.log {
     daily
     rotate 14
+    maxsize 500M
     compress
     delaycompress
     missingok
     notifempty
     copytruncate
     dateext
-    dateformat -%Y%m%d
+    dateformat -%Y%m%d-%H%M%S
     su ronny ronny
 }

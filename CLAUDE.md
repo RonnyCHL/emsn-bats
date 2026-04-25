@@ -72,3 +72,25 @@ Eigenaar: Ronny Hullegie
 - fix: bug fix
 - docs: documentatie update
 - chore: opruimen/onderhoud
+
+## Bekende issues
+
+### MQTT publisher (opgelost 2026-04-25)
+Twee processen (sonar-monitor + sonar-bavaria) gebruikten dezelfde
+hardcoded client_id en de `_get_client()` recreate-pad lekte threads
+en sockets bij elke disconnect. Resultaat na 3 dagen: 1004 sockets,
+507 threads, FD-limit (1024) bereikt → ALSA `Illegal combination of
+I/O devices` → opname stopt → 0 detecties. Fix in `mqtt_publisher.py`:
+unieke client_id per proces (rol+pid+host), persistente singleton,
+paho's interne `reconnect_delay_set()`. Plus FD self-check in
+`sonar_monitor.py` die het proces afbreekt bij ≥80% van rlimit zodat
+systemd herstart i.p.v. stilletjes door te modderen.
+
+### BattyBirdNET-Bavaria analyzer (open, upstream)
+`bat_ident.py --area Bavaria` faalt op alle WAVs met
+`ValueError: Tensor data is null. Run allocate_tensors() first` in
+`ai-edge-litert` 2.1.4. Bekend probleem met TFLite singleton
+INTERPRETER + custom classifier. Sinds 18 april 2026 geen enkele
+Bavaria detectie verwerkt. Fix vereist upgrade/patch van
+BattyBirdNET-Analyzer (third-party), buiten scope van emsn-sonar zelf.
+Workaround: BatDetect2 doet primaire detectie en werkt prima.
