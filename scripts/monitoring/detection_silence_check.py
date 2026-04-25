@@ -70,24 +70,22 @@ def _is_active_detection_window(now: datetime) -> bool:
     """
     if not is_night():
         return False
-    # is_night() kijkt naar "vandaag" zonsondergang. We willen weten of
-    # we al een uur in de nacht zijn. Truc: vraag is_night() opnieuw met
-    # de tijd van een uur geleden. Als dat ook True was, zijn we voorbij
-    # de warmup.
-    # Implementatie: simpel via wall clock + sun module zou eleganter
-    # zijn, maar deze indirecte check vermijdt duplicatie van de zon-
-    # berekening en blijft correct als is_night() ooit verfijnd wordt.
-    fake_now = now - _NIGHT_WARMUP
-    return _was_night_at(fake_now)
+    # is_night() kijkt naar "nu". We willen weten of we al een uur in de
+    # nacht zijn. We berekenen dat door de zonsondergang/-opgang van
+    # vandaag op te halen en zelf te vergelijken met (now - warmup).
+    return _was_night_at(now - _NIGHT_WARMUP)
 
 
 def _was_night_at(when: datetime) -> bool:
-    """Check is_night() voor een specifiek moment door de systeem-klok
-    tijdelijk niet te wijzigen — we vertrouwen erop dat is_night()
-    consistent is binnen één nachtcyclus en gebruiken de huidige
-    zonsondergang/-opgang van vandaag als referentie.
+    """Check of ``when`` binnen het nacht-window van zijn datum viel.
+
+    Werkt met zowel naïeve als tz-aware datetimes; we casten ``when``
+    naar local tz om te matchen met de output van ``get_sun_times()``.
     """
     from scripts.core.sun import get_sun_times
+
+    if when.tzinfo is None:
+        when = when.astimezone()
 
     sunrise, sunset = get_sun_times(dt=when.date())
     margin = timedelta(minutes=30)
@@ -147,7 +145,7 @@ def _build_payload(status: str, detail: str, count: int) -> dict:
 
 def evaluate(now: datetime | None = None) -> dict:
     """Bepaal de huidige status. Pure functie, eenvoudig te testen."""
-    now = now or datetime.now()
+    now = now or datetime.now().astimezone()
 
     if not _is_active_detection_window(now):
         return _build_payload(
