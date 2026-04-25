@@ -12,3 +12,8 @@ Environment=PYTHONUNBUFFERED=1
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=sonar-cleanup
+
+# Resource guards - oneshot dat veel kleine file deletes doet.
+LimitNOFILE=256
+TasksMax=20
+MemoryMax=128M

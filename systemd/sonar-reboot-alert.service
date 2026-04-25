@@ -17,5 +17,10 @@ SyslogIdentifier=sonar-reboot-alert
 # Voor state persistence in /var/lib/emsn-sonar
 ReadWritePaths=/var/lib/emsn-sonar
 
+# Resource guards - één-shot bij boot, kort journalctl call + één MQTT publish.
+LimitNOFILE=128
+TasksMax=10
+MemoryMax=64M
+
 [Install]
 WantedBy=multi-user.target

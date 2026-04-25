@@ -14,3 +14,8 @@ Environment=PYTHONUNBUFFERED=1
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=sonar-bavaria-sync
+
+# Resource guards - SQLite -> PostgreSQL bulk copy.
+LimitNOFILE=256
+TasksMax=20
+MemoryMax=512M

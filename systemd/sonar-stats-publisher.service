@@ -13,3 +13,8 @@ Environment=PYTHONUNBUFFERED=1
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=sonar-stats-publisher
+
+# Resource guards - korte oneshot, leest SQLite + publisht 3 MQTT messages.
+LimitNOFILE=128
+TasksMax=20
+MemoryMax=128M

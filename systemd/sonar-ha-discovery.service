@@ -14,5 +14,10 @@ StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=sonar-ha-discovery
 
+# Resource guards - één-shot bij boot, publisht een handvol HA discovery topics.
+LimitNOFILE=128
+TasksMax=10
+MemoryMax=64M
+
 [Install]
 WantedBy=multi-user.target

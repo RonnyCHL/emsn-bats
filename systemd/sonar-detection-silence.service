@@ -1,0 +1,21 @@
+[Unit]
+Description=EMSN Sonar - alarm bij stille detectie-pipeline tijdens nacht
+After=network-online.target sonar-monitor.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=ronny
+WorkingDirectory=/home/ronny/emsn-sonar
+ExecStart=/home/ronny/emsn-sonar/venv/bin/python3 -m scripts.monitoring.detection_silence_check
+
+Environment=PYTHONUNBUFFERED=1
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=sonar-detection-silence
+
+# Strikte resource guards: dit is een korte read-only check, hoort
+# niet meer dan een handvol FDs of MB nodig te hebben.
+LimitNOFILE=128
+TasksMax=10
+MemoryMax=64M

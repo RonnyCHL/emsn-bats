@@ -1,0 +1,10 @@
+[Unit]
+Description=EMSN Sonar - timer voor detection silence check (elke 30 min)
+
+[Timer]
+OnBootSec=10min
+OnUnitActiveSec=30min
+Persistent=true
+
+[Install]
+WantedBy=timers.target

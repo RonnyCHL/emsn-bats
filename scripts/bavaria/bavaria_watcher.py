@@ -393,9 +393,29 @@ def main() -> int:
         log.error("Analyzer venv python niet gevonden op %s", ANALYZER_VENV_PY)
         return 1
     conn = init_db()
-    log.info("BattyBirdNET watcher gestart, DB=%s", DB_PATH)
-    log.info("Polling %s elke %ds (model=%s, min_conf=%.2f)",
-             RECORDINGS_DIR, POLL_INTERVAL_SEC, AREA, MIN_CONFIDENCE)
+    # Effectieve config-banner. Maakt verkeerde drempels en pad-mismatches
+    # direct zichtbaar bij service-start (incident april 2026: 0.5 was te
+    # hoog, alle detecties werden gefilterd).
+    log.info(
+        "BattyBirdNET watcher effectieve config:\n"
+        "  area          = %s\n"
+        "  kHz           = 256\n"
+        "  min_conf      = %.3f\n"
+        "  threads       = %d\n"
+        "  poll_interval = %ds\n"
+        "  recordings_dir = %s\n"
+        "  spectrograms_dir = %s\n"
+        "  analyzer       = %s\n"
+        "  db_path        = %s",
+        AREA,
+        MIN_CONFIDENCE,
+        THREADS,
+        POLL_INTERVAL_SEC,
+        RECORDINGS_DIR,
+        SPECTROGRAMS_DIR,
+        ANALYZER_SCRIPT,
+        DB_PATH,
+    )
     iterations_idle = 0
     while _running:
         try:

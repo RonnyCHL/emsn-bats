@@ -29,6 +29,15 @@ logger = logging.getLogger("sonar_monitor")
 _FD_WARN_FRACTION = 0.5
 _FD_ABORT_FRACTION = 0.8
 
+# MQTT publish-failure escalatie: als we N opeenvolgende publishes mislukken,
+# is iets fundamenteels stuk (broker onbereikbaar, credentials verlopen,
+# netwerk down). Detecties belanden dan wel in SQLite maar bereiken nooit
+# Home Assistant / Ulanzi / dashboards. Liever herstarten en het opnieuw
+# proberen dan stilletjes onbereikbaar blijven. 50 = ruim 4 uur (gemiddeld
+# één detectie per ~5 min) zodat tijdelijke broker-restarts niet leiden tot
+# onnodige service-restarts.
+_MQTT_FAILURE_STREAK_LIMIT = 50
+
 
 class SonarMonitor:
     """Hoofd monitoring loop: opname -> analyse -> opslag."""
@@ -196,13 +205,17 @@ class SonarMonitor:
                 high_freq,
             )
 
-            # Publiceer naar MQTT
+            # Publiceer naar MQTT. Een False return is informatief voor de
+            # streak-teller in mqtt_publisher; een echte exception (bv.
+            # import error) loggen we expliciet zodat hij niet in stilte
+            # verdwijnt zoals tijdens incident 2026-04-22.
             try:
                 from scripts.detection.mqtt_publisher import publish_detection
 
-                publish_detection(detection_record)
+                if not publish_detection(detection_record):
+                    logger.warning("MQTT publish detectie #%d gaf False", det_id)
             except Exception:
-                logger.debug("MQTT publish overgeslagen")
+                logger.exception("MQTT publish detectie #%d crashte", det_id)
 
     def _check_fd_health(self) -> bool:
         """Bewaak het aantal open file descriptors van dit proces.
@@ -235,6 +248,29 @@ class SonarMonitor:
             )
         return True
 
+    def _check_mqtt_health(self) -> bool:
+        """Bewaak de MQTT publish-failure streak.
+
+        Returns:
+            True als publishes nog binnen acceptabele grenzen lukken.
+            False zodra ``_MQTT_FAILURE_STREAK_LIMIT`` overschreden is —
+            dan stoppen we en laat systemd ons opnieuw starten zodat de
+            client een verse connectie opzet.
+        """
+        try:
+            from scripts.detection.mqtt_publisher import get_publish_failure_streak
+        except ImportError:
+            return True
+
+        streak = get_publish_failure_streak()
+        if streak >= _MQTT_FAILURE_STREAK_LIMIT:
+            logger.error(
+                "MQTT %d opeenvolgende publish failures - service stopt zodat systemd herstart",
+                streak,
+            )
+            return False
+        return True
+
     def run(self):
         """Start de monitoring loop."""
         from scripts.core.database import init_db
@@ -255,12 +291,36 @@ class SonarMonitor:
             )
             sys.exit(1)
 
+        # Effectieve config-banner. Bewust uitvoerig zodat een verkeerde
+        # threshold of stale night_only-flag direct in journalctl te zien
+        # is i.p.v. pas zichtbaar wordt door uitblijven van detecties
+        # (zie incident bavaria threshold 0.5 vs 0.05, april 2026).
+        soft_fd, _hard_fd = resource.getrlimit(resource.RLIMIT_NOFILE)
         logger.info(
-            "Bat Monitor gestart - device=%d sr=%d duration=%ds threshold=%.2f",
+            "Bat Monitor effectieve config:\n"
+            "  station       = %s\n"
+            "  device        = %s (id=%d)\n"
+            "  sample_rate   = %d Hz\n"
+            "  duration      = %d s per blok\n"
+            "  threshold     = %.3f (BatDetect2 detection_threshold)\n"
+            "  night_only    = %s\n"
+            "  recording     = %s\n"
+            "  recordings_dir = %s\n"
+            "  fd_limit      = %d (warn=%d%%, abort=%d%%)\n"
+            "  mqtt_streak_limit = %d failures voor self-restart",
+            config["station"],
+            config["device_name"],
             self._device_id,
             config["sample_rate"],
             config["duration"],
             config["threshold"],
+            config["night_only"],
+            "enabled" if config["enabled"] else "DISABLED",
+            config["recordings_dir"],
+            soft_fd,
+            int(_FD_WARN_FRACTION * 100),
+            int(_FD_ABORT_FRACTION * 100),
+            _MQTT_FAILURE_STREAK_LIMIT,
         )
 
         # Pre-load BatDetect2 model
@@ -281,6 +341,10 @@ class SonarMonitor:
                 systemd_notify.watchdog()
 
                 if not self._check_fd_health():
+                    self.running = False
+                    sys.exit(1)
+
+                if not self._check_mqtt_health():
                     self.running = False
                     sys.exit(1)
 

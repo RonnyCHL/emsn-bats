@@ -51,6 +51,15 @@ _connected = False
 _init_lock = threading.Lock()
 _connected_event = threading.Event()
 
+# Aantal opeenvolgende failed publishes sinds de laatste succesvolle. Wordt
+# door long-running detectors uitgelezen (zie ``get_publish_failure_streak``)
+# om te beslissen of ze zichzelf moeten herstarten - dat is de tweede
+# verdedigingslinie naast de FD self-check sinds incident 2026-04-22, voor
+# scenario's waarin we nog wel FDs hebben maar de broker structureel
+# onbereikbaar is.
+_publish_failure_streak = 0
+_publish_streak_lock = threading.Lock()
+
 
 def _build_client_id() -> str:
     """Bouw een client_id die uniek is per proces.
@@ -78,15 +87,28 @@ def _on_connect(_client_, _userdata, _flags, reason_code, _properties):
         logger.warning("MQTT connect geweigerd: %s", reason_code)
 
 
+_LAST_DISCONNECT_LOG_AT: float = 0.0
+_DISCONNECT_LOG_THROTTLE_SEC = 300
+
+
 def _on_disconnect(_client_, _userdata, _flags, reason_code, _properties):
-    global _connected
+    global _connected, _LAST_DISCONNECT_LOG_AT
     _connected = False
     _connected_event.clear()
     # rc=0 = wij hebben zelf disconnect() gecalled (clean shutdown).
     # Paho v2 levert een ReasonCode object zonder __int__ - vergelijk via .value.
     rc_value = getattr(reason_code, "value", reason_code)
-    if rc_value != 0:
+    if rc_value == 0:
+        return
+    # Throttle: bij langdurige broker-uitval krijgen we elke
+    # ``_RECONNECT_MAX_DELAY`` seconden een disconnect-callback. Een
+    # warning per ~5 minuten is genoeg om de uitval-duur in de journal
+    # te kunnen reconstrueren zonder dat we de logs vol pompen.
+    import time as _time
+    now = _time.monotonic()
+    if now - _LAST_DISCONNECT_LOG_AT >= _DISCONNECT_LOG_THROTTLE_SEC:
         logger.warning("MQTT verbinding verbroken (rc=%s), paho herverbindt", reason_code)
+        _LAST_DISCONNECT_LOG_AT = now
 
 
 def _get_client() -> mqtt.Client | None:
@@ -137,10 +159,32 @@ def _get_client() -> mqtt.Client | None:
             return None
 
 
+def _record_publish_result(success: bool) -> None:
+    """Update de globale publish-failure streak counter."""
+    global _publish_failure_streak
+    with _publish_streak_lock:
+        if success:
+            _publish_failure_streak = 0
+        else:
+            _publish_failure_streak += 1
+
+
+def get_publish_failure_streak() -> int:
+    """Aantal opeenvolgende failed publishes sinds laatste succes.
+
+    Long-running detectors kunnen dit gebruiken om bij een aanhoudend
+    onbereikbare broker zichzelf te laten herstarten i.p.v. door te
+    blijven proberen.
+    """
+    with _publish_streak_lock:
+        return _publish_failure_streak
+
+
 def _publish(topic: str, payload: str, *, qos: int = 1, retain: bool = False) -> bool:
     """Interne publish helper. Wacht kort op de eerste connectie."""
     client = _get_client()
     if client is None:
+        _record_publish_result(False)
         return False
     if not _connected:
         # Eerste publish na proces-start: paho is mogelijk nog bezig met
@@ -150,11 +194,13 @@ def _publish(topic: str, payload: str, *, qos: int = 1, retain: bool = False) ->
         if not _connected_event.wait(_INITIAL_CONNECT_TIMEOUT):
             logger.debug("MQTT niet verbonden binnen %.1fs, skip %s",
                          _INITIAL_CONNECT_TIMEOUT, topic)
+            _record_publish_result(False)
             return False
     try:
         info = client.publish(topic, payload, qos=qos, retain=retain)
         if info.rc != mqtt.MQTT_ERR_SUCCESS:
             logger.warning("MQTT publish faalde topic=%s rc=%d", topic, info.rc)
+            _record_publish_result(False)
             return False
         # Voor qos>0: kort wachten tot broker PUBACK stuurt zodat
         # kortlevende processen niet exiten voordat de boodschap weg is.
@@ -165,9 +211,11 @@ def _publish(topic: str, payload: str, *, qos: int = 1, retain: bool = False) ->
                 # ValueError: client niet meer connected; RuntimeError:
                 # loop_stop al gebeurd. Beide niet-fataal hier.
                 pass
+        _record_publish_result(True)
         return True
     except Exception:
         logger.exception("MQTT publish exception topic=%s", topic)
+        _record_publish_result(False)
         return False
 
 

@@ -16,5 +16,10 @@ StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=emsn-sonar-web
 
+# Resource guards - Flask UI met enkele concurrent users.
+LimitNOFILE=256
+TasksMax=30
+MemoryMax=256M
+
 [Install]
 WantedBy=multi-user.target

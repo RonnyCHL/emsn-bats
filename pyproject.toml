@@ -12,3 +12,11 @@ readme = "README.md"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["scripts*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+filterwarnings = [
+    # ai-edge-litert spamt deze bij alle test imports.
+    "ignore:Enabling `experimental_preserve_all_tensors`:UserWarning",
+]

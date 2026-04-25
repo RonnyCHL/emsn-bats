@@ -21,5 +21,12 @@ StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=sonar-bavaria
 
+# Resource guards - zelfde policy als sonar-monitor (zie comment daar).
+# Bavaria spawnt subprocess bat_ident.py per WAV; tasks limit moet dat
+# accommoderen maar niet uit de hand lopen.
+LimitNOFILE=512
+TasksMax=50
+MemoryMax=1500M
+
 [Install]
 WantedBy=multi-user.target

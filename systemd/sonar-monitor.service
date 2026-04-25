@@ -21,5 +21,13 @@ StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=sonar-monitor
 
+# Resource guards. LimitNOFILE bewust laag (<<systeem default 1024)
+# zodat een toekomstige FD-leak binnen uren ipv dagen zichtbaar wordt
+# als crash + restart-counter, niet als stille degradatie. Werkelijk
+# verbruik in steady state is ~7 FDs / 7 threads.
+LimitNOFILE=512
+TasksMax=50
+MemoryMax=1500M
+
 [Install]
 WantedBy=multi-user.target

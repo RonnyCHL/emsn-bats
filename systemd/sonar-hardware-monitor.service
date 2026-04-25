@@ -16,6 +16,8 @@ SyslogIdentifier=sonar-hardware-monitor
 
 TimeoutStartSec=30
 MemoryMax=128M
+LimitNOFILE=128
+TasksMax=20
 Nice=15
 IOSchedulingClass=best-effort
 IOSchedulingPriority=6

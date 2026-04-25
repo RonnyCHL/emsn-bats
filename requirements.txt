@@ -1,32 +1,67 @@
-# BatDetect2 en dependencies
-batdetect2
-# Pi 4 CPU (Cortex-A72) mist ASIMDHP/FP16 die torch 2.8+ vereist → SIGILL bij inference
-torch==2.7.1
---extra-index-url https://download.pytorch.org/whl/cpu
-torchaudio==2.7.1
+# EMSN Sonar requirements - vleermuisdetectie pipeline
+#
+# Versie-policy
+# =============
+# We pinnen met `~=` (compatible release):
+#   * `~=X.Y` accepteert >=X.Y, <X+1.0 (major-stable)
+#   * `~=X.Y.Z` accepteert >=X.Y.Z, <X.(Y+1).0 (minor-stable)
+#
+# Voor packages waar minor-versies historisch breken (ML stack en numpy
+# ABI gevoelige libs) houden we minor-pin. Voor stabiele utilities mag
+# major-pin. De exacte werkende versies staan in requirements.lock.txt;
+# bij twijfel installeer vanaf daar.
+#
+# Bij wijzigingen: draai eerst `python -m pip install -r requirements.txt`
+# in een wegwerp-venv, run `pytest tests/` en `python -m pip freeze >
+# requirements.lock.txt` voor de update commit.
 
-# Audio opname
-sounddevice
-soundfile
-numpy<2
+# --- ML / detectie (minor-stable, breaking changes komen vaak) ---
+
+# BatDetect2 model + dependencies. Major release zou model API kunnen
+# veranderen; we volgen alleen patches binnen 1.3.x.
+batdetect2~=1.3.1
+
+# Pi 4 Cortex-A72 mist ASIMDHP/FP16 die torch >=2.8 verwacht (SIGILL bij
+# inference). Hard gepind op 2.7.1, geen wiggle room.
+torch==2.7.1
+torchaudio==2.7.1
+--extra-index-url https://download.pytorch.org/whl/cpu
+
+# librosa 0.11 heeft API breaks; numba/numpy ABI is fragile.
 librosa==0.10.2
 numba==0.65.0
+numpy>=1.26,<2
 
-# Database
-psycopg2-binary
+# --- Audio I/O ---
 
-# MQTT
-paho-mqtt
+sounddevice~=0.5.5
+soundfile~=0.13.1
 
-# Utilities
-pyyaml
-requests
+# --- Database ---
 
-# Web UI
-flask
-waitress
-loguru
+psycopg2-binary~=2.9.11
 
-# Systemd integratie (voor sd_notify watchdog)
-# Vereist: sudo apt install libsystemd-dev python3-dev
-systemd-python
+# --- MQTT (KRITIEK na incident 2026-04-22) ---
+
+# paho-mqtt 2.x heeft de v5 callback API die we gebruiken; 3.x kan
+# breaking zijn. Houd binnen 2.x.
+paho-mqtt~=2.1
+
+# --- Utilities ---
+
+pyyaml~=6.0
+requests~=2.33
+
+# --- Web UI ---
+
+flask~=3.1
+waitress~=3.0
+loguru~=0.7
+
+# --- Systemd integratie (sd_notify watchdog) ---
+# Vereist build deps: sudo apt install libsystemd-dev python3-dev
+systemd-python~=235
+
+# --- Test ---
+
+pytest~=8.3
