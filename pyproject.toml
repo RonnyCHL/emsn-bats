@@ -20,3 +20,18 @@ filterwarnings = [
     # ai-edge-litert spamt deze bij alle test imports.
     "ignore:Enabling `experimental_preserve_all_tensors`:UserWarning",
 ]
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+explicit_package_bases = true
+warn_unused_configs = true
+no_strict_optional = true
+exclude = [
+    "venv/",
+    ".venv/",
+    "__pycache__/",
+    "data/",
+    "recordings/",
+    "spectrograms/",
+]
