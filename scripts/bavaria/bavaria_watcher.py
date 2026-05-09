@@ -19,6 +19,14 @@ import time
 from datetime import datetime, timedelta
 from pathlib import Path
 
+# emsn-sonar zit niet als editable install in BattyBirdNET-Analyzer's venv,
+# dus voor `from scripts.* import ...` moeten we de project root in sys.path
+# zetten. Veilig om dit eenmalig hier te doen i.p.v. via PYTHONPATH-config
+# in het unit file (single source of truth, blijft werken bij venv-rebuilds).
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
+
 # Vaste paden - dit script draait altijd op de Sonar Pi
 HOME = Path.home()
 ANALYZER_DIR = HOME / "BattyBirdNET-Analyzer"
@@ -71,6 +79,13 @@ WATCHDOG_HEARTBEAT_SEC = 30         # systemd WatchdogSec staat op 300
 # wav_disappeared) duidt op een systeemprobleem dat aandacht behoeft.
 PERSISTENT_FAILURE_STREAK = 25
 RECOVERABLE_REASONS = {"wav_disappeared"}
+
+# Pulsstructuur-filter: zelfde drempel als BatDetect2 in sonar_monitor.py.
+# Bavaria geeft GEEN low_freq/high_freq in zijn CSV-output, dus we
+# enrichen de detecties met species_frequencies lookup voor de filter.
+PULSE_FILTER_ENABLED = True
+PULSE_FILTER_MIN_DR_DB = 15.0
+PULSE_FILTER_MAX_PEAK_FREQ_HZ = 30_000.0
 
 logging.basicConfig(
     level=logging.INFO,
@@ -394,18 +409,69 @@ def _publish_to_mqtt(wav_path: Path, detections: list[dict]) -> None:
         })
 
 
-def process_one(conn: sqlite3.Connection, wav_path: Path) -> tuple[int, str | None]:
+def _enrich_with_frequency_band(detections: list[dict]) -> None:
+    """Vul ``low_freq``/``high_freq`` per detectie in via soort-lookup.
+
+    Bavaria's CSV bevat geen frequentie-info; pulsstructuur-filter
+    heeft die wel nodig om de juiste band te checken. Onbekende soorten
+    krijgen geen freqs - die slaan we daarna over in het filter.
+    """
+    from scripts.core.species_frequencies import lookup_frequency_band
+
+    for det in detections:
+        band = lookup_frequency_band(det.get("scientific_name", ""))
+        if band is not None:
+            det["low_freq"], det["high_freq"] = band
+
+
+def _apply_pulse_filter(
+    wav_path: Path, detections: list[dict]
+) -> tuple[list[dict], list[dict]]:
+    """Pas de pulsstructuur-filter toe op Bavaria-detecties.
+
+    Laadt het audio-bestand met soundfile (geen scipy nodig, al beschikbaar
+    in BattyBirdNET-Analyzer venv). Returnt ``(kept, rejected)``; rejected
+    detecties hebben ``reject_reason='tonal_artifact'`` en een
+    ``dynamic_range_db`` veld.
+    """
+    if not detections:
+        return detections, []
+
+    import soundfile as sf
+    from scripts.detection.pulse_structure_filter import filter_detections
+
+    try:
+        audio, sample_rate = sf.read(str(wav_path), dtype="int16")
+    except Exception:
+        log.exception("Audio inlezen mislukt voor pulsfilter op %s", wav_path.name)
+        # Bij audio-load fail: geen filter, behoud detecties (fail-open)
+        return detections, []
+
+    return filter_detections(
+        audio,
+        sample_rate,
+        detections,
+        min_dynamic_range_db=PULSE_FILTER_MIN_DR_DB,
+        max_peak_freq_hz=PULSE_FILTER_MAX_PEAK_FREQ_HZ,
+    )
+
+
+def process_one(
+    conn: sqlite3.Connection, wav_path: Path
+) -> tuple[int, str | None, int]:
     """Verwerk één WAV.
 
     Returns:
-        Tuple ``(num_detections, error_reason)``. ``error_reason`` is
-        ``None`` bij succes, anders één van de categorieën uit
-        :func:`run_analyzer` of ``"parse_error"``.
+        Tuple ``(num_detections, error_reason, num_tonal_rejected)``.
+        ``error_reason`` is ``None`` bij succes, anders één van de
+        categorieën uit :func:`run_analyzer` of ``"parse_error"``.
+        ``num_tonal_rejected`` telt detecties die door de pulsstructuur-
+        filter zijn weggehaald.
     """
     csv_path, error_reason = run_analyzer(wav_path)
     if csv_path is None:
         store_results(conn, wav_path, [], error=error_reason)
-        return 0, error_reason
+        return 0, error_reason, 0
     try:
         detections = parse_csv(csv_path)
     except Exception:
@@ -415,7 +481,24 @@ def process_one(conn: sqlite3.Connection, wav_path: Path) -> tuple[int, str | No
             csv_path.unlink()
         except OSError:
             pass
-        return 0, "parse_error"
+        return 0, "parse_error", 0
+
+    # Pulsstructuur-filter: weer continue tonale bronnen die als vleermuis
+    # worden geclassificeerd. Bavaria geeft geen freqs, dus eerst enrichen.
+    rejected: list[dict] = []
+    if PULSE_FILTER_ENABLED and detections:
+        _enrich_with_frequency_band(detections)
+        detections, rejected = _apply_pulse_filter(wav_path, detections)
+        if rejected:
+            log.info(
+                "Pulsfilter: %d/%d afgewezen in %s (reasons: %s)",
+                len(rejected),
+                len(rejected) + len(detections),
+                wav_path.name,
+                ", ".join(
+                    sorted({d.get("scientific_name", "?") for d in rejected})
+                ),
+            )
     # Genereer spectrogrammen vóór opslaan zodat het pad mee wordt geschreven
     for det in detections:
         spec = _generate_spectrogram(wav_path, det)
@@ -432,7 +515,7 @@ def process_one(conn: sqlite3.Connection, wav_path: Path) -> tuple[int, str | No
             f"{d['common_name']} ({d['confidence']:.2f})" for d in detections[:3]
         )
         log.info("%s -> %d detecties: %s", wav_path.name, len(detections), names)
-    return len(detections), None
+    return len(detections), None, len(rejected)
 
 
 def _sd_notify(message: str) -> None:
@@ -482,14 +565,21 @@ class _HealthCounters:
     def __init__(self) -> None:
         self.processed_total = 0
         self.detections_total = 0
+        self.tonal_rejects_total = 0
         self.errors_by_reason: dict[str, int] = {}
         self.consecutive_real_failures = 0
         self.escalated_streak = False
         self.last_status_log_at = time.monotonic()
 
-    def record(self, detections: int, error_reason: str | None) -> None:
+    def record(
+        self,
+        detections: int,
+        error_reason: str | None,
+        tonal_rejected: int = 0,
+    ) -> None:
         self.processed_total += 1
         self.detections_total += detections
+        self.tonal_rejects_total += tonal_rejected
         if error_reason is None:
             self.consecutive_real_failures = 0
             self.escalated_streak = False
@@ -515,9 +605,11 @@ class _HealthCounters:
             f"{r}={c}" for r, c in sorted(self.errors_by_reason.items())
         ) or "geen"
         log.info(
-            "Health: %d processed, %d detecties, %.0f%% success, errors: %s",
+            "Health: %d processed, %d detecties (%d tonal_rejected), "
+            "%.0f%% success, errors: %s",
             self.processed_total,
             self.detections_total,
+            self.tonal_rejects_total,
             success_pct,
             breakdown,
         )
@@ -545,6 +637,7 @@ def main() -> int:
         "  spectrograms_dir = %s\n"
         "  analyzer       = %s\n"
         "  db_path        = %s\n"
+        "  pulse_filter   = %s (min_dr=%.1f dB, peak<%d Hz)\n"
         "  status_log     = elke %ds\n"
         "  watchdog       = elke %ds\n"
         "  failure_streak = alert na %d echte mislukkingen",
@@ -556,6 +649,9 @@ def main() -> int:
         SPECTROGRAMS_DIR,
         ANALYZER_SCRIPT,
         DB_PATH,
+        "enabled" if PULSE_FILTER_ENABLED else "DISABLED",
+        PULSE_FILTER_MIN_DR_DB,
+        int(PULSE_FILTER_MAX_PEAK_FREQ_HZ),
         STATUS_LOG_INTERVAL_SEC,
         WATCHDOG_HEARTBEAT_SEC,
         PERSISTENT_FAILURE_STREAK,
@@ -589,13 +685,15 @@ def main() -> int:
                 if not _running:
                     break
                 try:
-                    detections, error_reason = process_one(conn, wav)
+                    detections, error_reason, tonal_rejected = process_one(
+                        conn, wav
+                    )
                 except Exception:
                     log.exception("Fout bij verwerken %s", wav)
                     store_results(conn, wav, [], error="exception")
                     counters.record(0, "exception")
                 else:
-                    counters.record(detections, error_reason)
+                    counters.record(detections, error_reason, tonal_rejected)
 
                 if (
                     counters.consecutive_real_failures
