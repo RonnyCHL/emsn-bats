@@ -63,6 +63,15 @@ MIN_CONFIDENCE = 0.05
 AREA = "Bavaria"
 THREADS = 2
 
+# Hospital-grade defaults voor health monitoring.
+STATUS_LOG_INTERVAL_SEC = 300       # log een health-summary elke 5 min
+WATCHDOG_HEARTBEAT_SEC = 30         # systemd WatchdogSec staat op 300
+# Falen-streak voor escalatie: bat_ident produceert ~17 calls per uur in
+# typische zomer-nacht. 25 opeenvolgende echte mislukkingen (dus geen
+# wav_disappeared) duidt op een systeemprobleem dat aandacht behoeft.
+PERSISTENT_FAILURE_STREAK = 25
+RECOVERABLE_REASONS = {"wav_disappeared"}
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s %(levelname)s %(message)s",
@@ -163,8 +172,27 @@ def find_unprocessed(conn: sqlite3.Connection) -> list[Path]:
     return [p for p in all_wavs if str(p) not in done]
 
 
-def run_analyzer(wav_path: Path) -> Path | None:
-    """Roep bat_ident.py aan, geeft pad naar output CSV."""
+def run_analyzer(wav_path: Path) -> tuple[Path | None, str | None]:
+    """Roep bat_ident.py aan en geef pad naar output CSV terug.
+
+    Returns:
+        Tuple ``(csv_path, error_reason)``:
+          - bij succes: ``(Path(csv), None)``
+          - bij falen: ``(None, error_reason)`` met één van:
+            * ``"wav_disappeared"`` - WAV is weg vóór bat_ident kon starten
+              (race conditie met sonar-monitor cleanup)
+            * ``"analyzer_timeout"`` - bat_ident hangt >120s
+            * ``"analyzer_rc_nonzero"`` - bat_ident exit code != 0
+            * ``"analyzer_no_csv"`` - bat_ident exit 0 maar produceerde
+              geen output (bekende bat_ident bug bij file-open errors:
+              de tool prints "Cannot open audio file" naar stdout en
+              exit met rc=0 i.p.v. een non-zero code)
+    """
+    if not wav_path.exists():
+        # sonar-monitor verwijdert WAVs zonder BatDetect2-detecties;
+        # tussen onze glob en deze call kan de file dus verdwenen zijn.
+        return None, "wav_disappeared"
+
     TMP_OUT_DIR.mkdir(parents=True, exist_ok=True)
     out_csv = TMP_OUT_DIR / f"{wav_path.stem}.csv"
     if out_csv.exists():
@@ -191,16 +219,23 @@ def run_analyzer(wav_path: Path) -> Path | None:
         )
     except subprocess.TimeoutExpired:
         log.warning("Timeout op %s", wav_path.name)
-        return None
+        return None, "analyzer_timeout"
     if result.returncode != 0:
         log.warning(
-            "bat_ident faalde rc=%d op %s: %s",
+            "bat_ident rc=%d op %s: %s",
             result.returncode,
             wav_path.name,
             result.stderr.strip()[:300],
         )
-        return None
-    return out_csv if out_csv.exists() else None
+        return None, "analyzer_rc_nonzero"
+    if not out_csv.exists():
+        # rc=0 maar geen CSV - meestal "Cannot open audio file" in stdout.
+        # Logging van eerste regel stdout zodat oorzaak zichtbaar is.
+        first_line = (result.stdout or "").strip().splitlines()
+        hint = first_line[-1][:200] if first_line else "(stdout leeg)"
+        log.warning("bat_ident rc=0 maar geen CSV op %s: %s", wav_path.name, hint)
+        return None, "analyzer_no_csv"
+    return out_csv, None
 
 
 def parse_csv(csv_path: Path) -> list[dict]:
@@ -359,13 +394,28 @@ def _publish_to_mqtt(wav_path: Path, detections: list[dict]) -> None:
         })
 
 
-def process_one(conn: sqlite3.Connection, wav_path: Path) -> int:
-    """Verwerk één WAV. Return aantal detecties."""
-    csv_path = run_analyzer(wav_path)
+def process_one(conn: sqlite3.Connection, wav_path: Path) -> tuple[int, str | None]:
+    """Verwerk één WAV.
+
+    Returns:
+        Tuple ``(num_detections, error_reason)``. ``error_reason`` is
+        ``None`` bij succes, anders één van de categorieën uit
+        :func:`run_analyzer` of ``"parse_error"``.
+    """
+    csv_path, error_reason = run_analyzer(wav_path)
     if csv_path is None:
-        store_results(conn, wav_path, [], error="analyzer_failed")
-        return 0
-    detections = parse_csv(csv_path)
+        store_results(conn, wav_path, [], error=error_reason)
+        return 0, error_reason
+    try:
+        detections = parse_csv(csv_path)
+    except Exception:
+        log.exception("CSV parse error op %s", wav_path.name)
+        store_results(conn, wav_path, [], error="parse_error")
+        try:
+            csv_path.unlink()
+        except OSError:
+            pass
+        return 0, "parse_error"
     # Genereer spectrogrammen vóór opslaan zodat het pad mee wordt geschreven
     for det in detections:
         spec = _generate_spectrogram(wav_path, det)
@@ -382,7 +432,95 @@ def process_one(conn: sqlite3.Connection, wav_path: Path) -> int:
             f"{d['common_name']} ({d['confidence']:.2f})" for d in detections[:3]
         )
         log.info("%s -> %d detecties: %s", wav_path.name, len(detections), names)
-    return len(detections)
+    return len(detections), None
+
+
+def _sd_notify(message: str) -> None:
+    """Stuur een raw sd_notify message naar systemd over de NOTIFY_SOCKET.
+
+    Inline implementatie zodat we niet afhankelijk zijn van het
+    ``systemd-python`` package of ``scripts.core.systemd_notify``: dit
+    script draait onder de BattyBirdNET-Analyzer venv die emsn-sonar's
+    package niet kan importeren. Het sd_notify protocol is gewoon een
+    UDP-write naar een UNIX domain socket.
+
+    No-op buiten een ``Type=notify`` systemd context (NOTIFY_SOCKET
+    unset).
+    """
+    import os
+    import socket
+
+    sock_path = os.environ.get("NOTIFY_SOCKET")
+    if not sock_path:
+        return
+    try:
+        # Abstract Linux socket (begin met '@') -> NUL-prefixed path
+        addr = "\0" + sock_path[1:] if sock_path.startswith("@") else sock_path
+        with socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM) as sock:
+            sock.connect(addr)
+            sock.sendall(message.encode("utf-8"))
+    except OSError:
+        # sd_notify mag NOOIT de service tot crash brengen.
+        pass
+
+
+def _try_systemd_notify(state: str) -> None:
+    """Vertaal high-level state naar het juiste sd_notify protocol bericht."""
+    if state == "ready":
+        _sd_notify("READY=1")
+    elif state == "watchdog":
+        _sd_notify("WATCHDOG=1")
+    elif state == "stopping":
+        _sd_notify("STOPPING=1")
+    else:
+        _sd_notify(f"STATUS={state}")
+
+
+class _HealthCounters:
+    """Houdt success/failure counters bij voor health-summary en alerting."""
+
+    def __init__(self) -> None:
+        self.processed_total = 0
+        self.detections_total = 0
+        self.errors_by_reason: dict[str, int] = {}
+        self.consecutive_real_failures = 0
+        self.escalated_streak = False
+        self.last_status_log_at = time.monotonic()
+
+    def record(self, detections: int, error_reason: str | None) -> None:
+        self.processed_total += 1
+        self.detections_total += detections
+        if error_reason is None:
+            self.consecutive_real_failures = 0
+            self.escalated_streak = False
+        else:
+            self.errors_by_reason[error_reason] = (
+                self.errors_by_reason.get(error_reason, 0) + 1
+            )
+            if error_reason not in RECOVERABLE_REASONS:
+                self.consecutive_real_failures += 1
+
+    def maybe_log_summary(self) -> None:
+        """Log een health-summary als ``STATUS_LOG_INTERVAL_SEC`` is verstreken."""
+        now = time.monotonic()
+        if now - self.last_status_log_at < STATUS_LOG_INTERVAL_SEC:
+            return
+        self.last_status_log_at = now
+        if self.processed_total == 0:
+            log.info("Health: geen WAVs verwerkt in laatste interval")
+            return
+        success = self.processed_total - sum(self.errors_by_reason.values())
+        success_pct = 100.0 * success / self.processed_total
+        breakdown = ", ".join(
+            f"{r}={c}" for r, c in sorted(self.errors_by_reason.items())
+        ) or "geen"
+        log.info(
+            "Health: %d processed, %d detecties, %.0f%% success, errors: %s",
+            self.processed_total,
+            self.detections_total,
+            success_pct,
+            breakdown,
+        )
 
 
 def main() -> int:
@@ -406,7 +544,10 @@ def main() -> int:
         "  recordings_dir = %s\n"
         "  spectrograms_dir = %s\n"
         "  analyzer       = %s\n"
-        "  db_path        = %s",
+        "  db_path        = %s\n"
+        "  status_log     = elke %ds\n"
+        "  watchdog       = elke %ds\n"
+        "  failure_streak = alert na %d echte mislukkingen",
         AREA,
         MIN_CONFIDENCE,
         THREADS,
@@ -415,10 +556,26 @@ def main() -> int:
         SPECTROGRAMS_DIR,
         ANALYZER_SCRIPT,
         DB_PATH,
+        STATUS_LOG_INTERVAL_SEC,
+        WATCHDOG_HEARTBEAT_SEC,
+        PERSISTENT_FAILURE_STREAK,
     )
+
+    _try_systemd_notify("ready")
+    _try_systemd_notify("Monitoring actief")
+    last_watchdog = time.monotonic()
+    counters = _HealthCounters()
     iterations_idle = 0
+
     while _running:
         try:
+            now = time.monotonic()
+            if now - last_watchdog >= WATCHDOG_HEARTBEAT_SEC:
+                _try_systemd_notify("watchdog")
+                last_watchdog = now
+
+            counters.maybe_log_summary()
+
             todo = find_unprocessed(conn)
             if not todo:
                 iterations_idle += 1
@@ -432,13 +589,36 @@ def main() -> int:
                 if not _running:
                     break
                 try:
-                    process_one(conn, wav)
+                    detections, error_reason = process_one(conn, wav)
                 except Exception:
                     log.exception("Fout bij verwerken %s", wav)
                     store_results(conn, wav, [], error="exception")
+                    counters.record(0, "exception")
+                else:
+                    counters.record(detections, error_reason)
+
+                if (
+                    counters.consecutive_real_failures
+                    >= PERSISTENT_FAILURE_STREAK
+                    and not counters.escalated_streak
+                ):
+                    log.error(
+                        "Persistent failure streak: %d opeenvolgende echte "
+                        "mislukkingen (excl. wav_disappeared). Recente "
+                        "errors: %s",
+                        counters.consecutive_real_failures,
+                        counters.errors_by_reason,
+                    )
+                    counters.escalated_streak = True
+                # Heartbeat ook tussen WAV-verwerking voor langere queues.
+                if time.monotonic() - last_watchdog >= WATCHDOG_HEARTBEAT_SEC:
+                    _try_systemd_notify("watchdog")
+                    last_watchdog = time.monotonic()
         except Exception:
             log.exception("Onverwachte fout in main loop")
             _sleep_interruptible(POLL_INTERVAL_SEC)
+
+    _try_systemd_notify("stopping")
     log.info("Watcher gestopt")
     conn.close()
     return 0
