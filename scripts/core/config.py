@@ -14,6 +14,17 @@ DEFAULTS = {
     # Detectie
     "detection.threshold": "0.3",
     "detection.species_threshold": "0.2",
+    # Pulsstructuur-filter: weert continue tonale bronnen (ultrasone
+    # repellers, schakelende voedingen) die BatDetect2 anders als
+    # N. leisleri / E. serotinus / N. noctula classificeert. Echte
+    # vleermuiscalls hebben >20 dB dynamic range binnen hun band;
+    # continue tonen <10 dB. Drempel 15 dB is een ruime middenmaat.
+    # Filter wordt alleen toegepast op detecties met peak <30 kHz; dat
+    # is de zone waar de bekende interferentiebron zit. Hogerfrequente
+    # soorten (Pipistrellus, Myotis, Plecotus) blijven ongefilterd.
+    "detection.pulse_filter_enabled": "true",
+    "detection.pulse_filter_min_dr_db": "15.0",
+    "detection.pulse_filter_max_peak_freq_hz": "30000.0",
     # Opslag
     "storage.recordings_dir": "/home/ronny/emsn-sonar/recordings",
     "storage.spectrograms_dir": "/home/ronny/emsn-sonar/spectrograms",

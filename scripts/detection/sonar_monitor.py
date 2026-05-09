@@ -66,6 +66,15 @@ class SonarMonitor:
             "recordings_dir": get_config("storage.recordings_dir"),
             "spectrograms_dir": get_config("storage.spectrograms_dir"),
             "station": get_config("station.name"),
+            "pulse_filter_enabled": get_config_bool(
+                "detection.pulse_filter_enabled"
+            ),
+            "pulse_filter_min_dr_db": get_config_float(
+                "detection.pulse_filter_min_dr_db"
+            ),
+            "pulse_filter_max_peak_freq_hz": get_config_float(
+                "detection.pulse_filter_max_peak_freq_hz"
+            ),
         }
 
     def _find_device(self, device_name: str) -> int | None:
@@ -306,6 +315,7 @@ class SonarMonitor:
             "  night_only    = %s\n"
             "  recording     = %s\n"
             "  recordings_dir = %s\n"
+            "  pulse_filter  = %s (min_dr=%.1f dB, peak<%d Hz)\n"
             "  fd_limit      = %d (warn=%d%%, abort=%d%%)\n"
             "  mqtt_streak_limit = %d failures voor self-restart",
             config["station"],
@@ -317,6 +327,9 @@ class SonarMonitor:
             config["night_only"],
             "enabled" if config["enabled"] else "DISABLED",
             config["recordings_dir"],
+            "enabled" if config["pulse_filter_enabled"] else "DISABLED",
+            config["pulse_filter_min_dr_db"],
+            int(config["pulse_filter_max_peak_freq_hz"]),
             soft_fd,
             int(_FD_WARN_FRACTION * 100),
             int(_FD_ABORT_FRACTION * 100),
@@ -390,6 +403,32 @@ class SonarMonitor:
                 detections = self._analyze(
                     audio_path, config["threshold"]
                 )
+
+                # Pulsstructuur-filter: weer continue tonale bronnen
+                # (ultrasone repellers, schakelende voedingen) die als
+                # vleermuis worden geclassificeerd. Echte calls hebben
+                # >20 dB dynamic range, continue tonen <10 dB.
+                if detections and config["pulse_filter_enabled"]:
+                    from scripts.detection.pulse_structure_filter import (
+                        filter_detections,
+                    )
+
+                    detections, rejected = filter_detections(
+                        audio,
+                        config["sample_rate"],
+                        detections,
+                        min_dynamic_range_db=config["pulse_filter_min_dr_db"],
+                        max_peak_freq_hz=config[
+                            "pulse_filter_max_peak_freq_hz"
+                        ],
+                    )
+                    if rejected:
+                        logger.info(
+                            "Pulsfilter: %d/%d afgewezen in %s",
+                            len(rejected),
+                            len(rejected) + len(detections),
+                            Path(audio_path).name,
+                        )
 
                 if detections:
                     logger.info(
