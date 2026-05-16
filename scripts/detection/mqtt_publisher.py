@@ -37,6 +37,14 @@ TOPIC_DETECTION = "emsn2/sonar/detection"
 TOPIC_STATS = "emsn2/sonar/stats"
 TOPIC_HEALTH = "emsn2/sonar/health"
 
+# Publieke media base URL (emsn-media nginx op NAS). Pad-segmenten komen
+# van archive_sync: WAV -> sonar/audio/<YYYY-MM-DD>/<wav>,
+# PNG -> sonar/spectrograms/<YYYY-MM-DD>/<png>,
+# TE-MP3 -> sonar/audio_te/<YYYY-MM-DD>/<wav-stem>_te10x.mp3 (pas na
+# nachtelijke bake aanwezig — vandaar `te_url` doorgaans None in
+# live-events).
+MEDIA_BASE = os.getenv("MEDIA_BASE", "https://media.ronnyhullegie.nl")
+
 # Paho reconnect-window (seconden). Paho's loop thread reconnect zelf
 # binnen dit window; wij hoeven niets te doen behalve publish() callen.
 _RECONNECT_MIN_DELAY = 1
@@ -219,20 +227,49 @@ def _publish(topic: str, payload: str, *, qos: int = 1, retain: bool = False) ->
         return False
 
 
+def _date_segment(timestamp: str | None) -> str | None:
+    """Pak `YYYY-MM-DD` uit een ISO/space-separated timestamp."""
+    if not timestamp:
+        return None
+    return timestamp.split("T", 1)[0].split(" ", 1)[0]
+
+
+def _audio_url(file_name: str | None, timestamp: str | None) -> str | None:
+    if not file_name:
+        return None
+    date = _date_segment(timestamp)
+    if not date:
+        return None
+    return f"{MEDIA_BASE}/sonar/audio/{date}/{file_name}"
+
+
+def _spectrogram_url(spectrogram_path: str | None, timestamp: str | None) -> str | None:
+    if not spectrogram_path:
+        return None
+    date = _date_segment(timestamp)
+    if not date:
+        return None
+    name = Path(spectrogram_path).name
+    return f"{MEDIA_BASE}/sonar/spectrograms/{date}/{name}"
+
+
 def publish_detection(detection: dict) -> bool:
     """Publiceer een vleermuisdetectie naar MQTT.
 
     Args:
         detection: Dict met detection_time, species, species_dutch,
                    confidence, frequency_low/high/peak, duration_ms,
-                   station, detector.
+                   station, detector, en optioneel file_name,
+                   audio_path, spectrogram_path voor publieke URLs.
 
     Returns:
         True als succesvol naar broker gestuurd.
     """
+    timestamp = detection.get("detection_time")
+    file_name = detection.get("file_name")
     payload = json.dumps(
         {
-            "timestamp": detection.get("detection_time"),
+            "timestamp": timestamp,
             "species": detection.get("species"),
             "species_dutch": detection.get("species_dutch"),
             "confidence": round(detection.get("confidence", 0), 3),
@@ -243,6 +280,13 @@ def publish_detection(detection: dict) -> bool:
             "duration_ms": round(detection.get("duration_ms", 0), 1),
             "station": detection.get("station", "emsn-sonar"),
             "detector": detection.get("detector", "batdetect2"),
+            "file_name": file_name,
+            "audio_url": _audio_url(file_name, timestamp),
+            "spectrogram_url": _spectrogram_url(detection.get("spectrogram_path"), timestamp),
+            # TE-MP3 wordt pas tijdens de nachtelijke bake gegenereerd;
+            # frontend toont fallback ("TE-MP3 nog niet gegenereerd") en
+            # de WAV-permalink werkt 's ochtends na sync.
+            "te_url": None,
         },
         ensure_ascii=False,
     )

@@ -406,6 +406,8 @@ def _publish_to_mqtt(wav_path: Path, detections: list[dict]) -> None:
             "duration_ms": (det["end_s"] - det["start_s"]) * 1000,
             "station": "emsn-sonar",
             "detector": "bavaria",
+            "file_name": wav_path.name,
+            "spectrogram_path": det.get("spectrogram_path"),
         })
 
 
